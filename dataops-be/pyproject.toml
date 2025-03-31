@@ -9,6 +9,7 @@ python = "~3.8"
 Django = "3.1.13"
 djangorestframework = "^3.12.4"
 drf-yasg = "^1.21.8"
+pymongo = "^4.6.1"
 
 [tool.poetry.dev-dependencies]
 
