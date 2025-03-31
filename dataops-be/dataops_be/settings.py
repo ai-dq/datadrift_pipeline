@@ -83,6 +83,14 @@ DATABASES = {
     }
 }
 
+MONGODB = {
+    'HOST': 'localhost',
+    'PORT': 27025,
+    'USERNAME': 'diquest',
+    'PASSWORD': 'ek2znptm2',
+    'DB_NAME': 'datadrift_db',
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
