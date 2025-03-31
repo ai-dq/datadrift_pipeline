@@ -19,12 +19,66 @@
 - `sample_data/`: 테스트 및 시뮬레이션용 샘플 데이터 디렉토리
 
 ## 기술 스택
-
 본 프로젝트는 다음 기술들을 기반으로 구축되었습니다:
 
 - **MongoDB**: 학습 데이터 및 모델의 원천데이터 및 메타데이터 저장소로 사용
 - **Django**: DataOps 및 MLOps 백엔드 서비스 구현
 - **Vue.js**: 사용자 인터페이스 구현을 위한 프론트엔드 프레임워크
+
+## 시스템 아키텍처
+```mermaid
+flowchart TD
+
+%% 사용자 인터페이스
+User --> DO-FE
+User --> ML-FE
+
+%% DB 영역
+subgraph DB
+  MongoDB["MongoDB 저장소"]
+end
+
+%% DataOps 영역
+subgraph DataOps
+  DO-FE["dataops-fe (Vue.js)"]
+  DO-BE["dataops-be (Django)"]
+  DO-JOB1["Batch Job: 통계 수집"]
+  DO-JOB2["Batch Job: 드리프트 분석 요청"]
+  DO-JOB3["Batch Job: 데이터 정리"]
+end
+
+%% MLOps 영역
+subgraph MLOps
+  ML-FE["mlops-fe (Vue.js)"]
+  ML-BE["mlops-be (Django)"]
+end
+
+%% 외부 영역
+External["외부 드리프트 검출 서비스"]
+
+%% DataOps 흐름
+DO-FE --> DO-BE
+DO-BE --> MongoDB
+DO-BE --> DO-JOB1
+DO-BE --> DO-JOB2
+DO-JOB1 --> MongoDB
+DO-JOB2 --> External
+External --> DO-JOB2
+DO-JOB2 --> MongoDB
+DO-JOB3 --> MongoDB
+
+%% MLOps 흐름
+ML-FE --> ML-BE
+ML-BE --> MongoDB
+
+%% 재학습 트리거
+DO-BE -->|재학습 요청| ML-BE
+User -->|수동 재학습 요청| ML-BE
+
+%% 결과 확인
+ML-BE -->|학습 결과 저장| MongoDB
+ML-FE -->|결과 조회| MongoDB
+```
 
 ## MongoDB 설정
 - 이 프로젝트는 Docker를 사용하여 MongoDB를 설정합니다. 따라서 Host Server에 Docker가 설치되어 있어야 합니다. 설치되어 있지 않다면 [Docker 공식 웹사이트](https://www.docker.com/get-started)에서 운영체제에 맞는 버전을 설치해 주세요.
