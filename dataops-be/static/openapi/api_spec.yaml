@@ -5,7 +5,24 @@ info:
   description: 데이터셋 관리 및 분석 모델 API 명세
 
 paths:
-  /datasets/:
+  /datasets:
+    post:
+      summary: 새로운 데이터셋 생성
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DatasetCreateRequest"
+      responses:
+        "201":
+          description: 생성된 데이터셋 정보 반환
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+        "400":
+          description: 요청 오류
     get:
       summary: 전체 데이터셋 목록 조회
       responses:
@@ -18,7 +35,38 @@ paths:
                 items:
                   $ref: "#/components/schemas/Dataset"
 
-  /datasets/{dataset_id}/:
+  /datasets/{dataset_id}:
+    post:
+      summary: 데이터셋에 단일 파일 업로드
+      description: multipart/form-data 방식으로 단일 이미지 파일을 업로드합니다.
+      parameters:
+        - name: dataset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 업로드할 파일
+      responses:
+        "201":
+          description: 업로드 완료 및 파일 메타 정보 반환
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+        "400":
+          description: 유효하지 않은 요청
+        "404":
+          description: 데이터셋을 찾을 수 없음
     get:
       summary: 특정 데이터셋 상세 조회
       parameters:
@@ -37,6 +85,20 @@ paths:
 
 components:
   schemas:
+    DatasetCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+
     Dataset:
       type: object
       properties:
@@ -62,3 +124,22 @@ components:
               type: array
               items:
                 type: object
+
+    UploadResult:
+      type: object
+      properties:
+        dataset_id:
+          type: string
+          example: "661fabcd1234567890abcdef"
+        file_id:
+          type: string
+          example: "6624abcd9876543210abcdef"
+        filename:
+          type: string
+          example: "test_001.jpg"
+        content_type:
+          type: string
+          example: "image/jpeg"
+        status:
+          type: string
+          example: "uploaded"
