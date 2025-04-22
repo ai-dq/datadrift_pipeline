@@ -1,147 +1,125 @@
 <template>
+  <v-container class="py-4">
     <v-card>
-        <v-row>
-            <v-col class="pa-7 pb-0" cols="2">
-                <v-select class="float-left" outlined clearable label="ML Task" :items="selectItems"
-                    v-model="filter.selected.ml_task" @change="getDataset"></v-select>
-            </v-col>
-            <v-col class="pa-7 pb-0">
-                <v-btn large color="primary" class="float-right" @click="openDialog">CREATE</v-btn>
-            </v-col>
-        </v-row>
-        <v-row class="ma-7">
-            <v-col class="pa-5" v-for="(dataset, index) in datasets" :key="index" cols="12" md="6">
-                <v-card hover :to="{ name: 'DatasetDetailView', params: { dataset_id: dataset._id } }">
-                    <div>
-                        <v-card-text class="pb-0">
-                            {{ getMLTaskName(dataset.ml_task) }}
-                        </v-card-text>
-                        <div class="d-flex">
-                            <v-avatar class="ma-3" size="192" tile>
-                                <v-img :src="getCoverImage(dataset.cover_image)" contain />
-                            </v-avatar>
-                            <div class="pa-0 ma-0">
-                                <v-footer color="white" padless style="height:100%;">
-                                    <v-card-title class="pt-0">
-                                        {{ dataset.name }}
-                                    </v-card-title>
-                                    <v-card-text>
-                                        {{ dataset.description }}
-                                    </v-card-text>
-                                    <v-card-subtitle class="grey--text">
-                                        {{ dataset.labeled_data }} / {{ dataset.total_data }}
-                                    </v-card-subtitle>
-                                </v-footer>
-                            </div>
-                        </div>
-                    </div>
-                </v-card>
-            </v-col>
-        </v-row>
-        <v-row>
-            <v-col cols="11">
-                <v-pagination v-model="pagenation.page" :length="pagenation.length" :total-visible="10"
-                    @input="pageMove"></v-pagination>
-            </v-col>
-            <v-col cols="1" class="pr-10">
-                <v-select v-model="filter.selected.limit" :items="[10, 20, 50]" dense outlined hint="per page"
-                    persistent-hint @change="getDataset"></v-select>
-            </v-col>
-        </v-row>
-        <v-dialog persistent width="500" v-model="datasetDialog.show">
-            <v-card>
-                <v-card-title>Create Dataset</v-card-title>
-                <v-card-text>
-                    <v-form ref="form" v-model="createDto.valid" lazy-validation>
-                        <v-row>
-                            <v-col cols="3">
-                                <v-card-subtitle class="pa-2 pl-0">ML Task<v-icon x-small
-                                        color="red">mdi-asterisk</v-icon> :</v-card-subtitle>
-                            </v-col>
-                            <v-col cols="9">
-                                <v-select class="float-left" outlined required clearable dense label="ML Task"
-                                    :items="selectItems" :rules="[v => (typeof v) === 'number' || 'Item is required']"
-                                    v-model="createDto.ml_task"></v-select>
-                            </v-col>
-                            <v-col cols="3">
-                                <v-card-subtitle class="pa-2 pl-0">Name<v-icon x-small color="red">mdi-asterisk</v-icon>
-                                    :</v-card-subtitle>
-                            </v-col>
-                            <v-col cols="9">
-                                <v-text-field label="Dataset Name" dense required v-model="createDto.name"
-                                    :rules="[v => !!v || 'Required.', v => v.trim().length !== 0 || 'value error']"></v-text-field>
-                            </v-col>
-                            <v-col cols="3">
-                                <v-card-subtitle class="pa-2 pl-0">Description :</v-card-subtitle>
-                            </v-col>
-                            <v-col cols="9">
-                                <v-textarea name="input-7-1" label="Dataset Description" v-model="createDto.description"
-                                    hint="Dataset Description"></v-textarea>
-                            </v-col>
-                        </v-row>
-                    </v-form>
-                </v-card-text>
-                <v-card-actions class="justify-end">
-                    <v-btn text @click="closeDialog">Cancel</v-btn>
-                    <v-btn color="primary" text @click="submitDialog">Create</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+      <v-card-title>
+        <span class="text-h6">데이터셋 조회</span>
+        <v-spacer />
+        <v-select
+          :items="datasets"
+          item-title="name"
+          item-value="id"
+          label="데이터셋"
+          v-model="selectedDatasetId"
+          @update:modelValue="fetchDatasetDetail"
+          dense
+          style="max-width: 300px"
+        />
+      </v-card-title>
+
+      <!-- CSV 데이터 타입 -->
+      <v-data-table
+        v-if="selectedDataset?.labels?.includes('csv') && records.length > 0"
+        :headers="recordHeaders"
+        :items="records"
+        class="elevation-1"
+      />
+
+      <!-- 이미지 데이터 타입 -->
+      <v-row
+        v-else-if="selectedDataset?.labels?.includes('image') && imageFiles.length > 0"
+        dense
+      >
+        <v-col
+          v-for="file in imageFiles"
+          :key="file.file_id"
+          cols="12"
+          sm="6"
+          md="4"
+          lg="3"
+        >
+          <v-card
+            class="ma-2"
+            outlined
+          >
+            <v-img
+              v-if="file.file_id"
+              :src="http.getDatasetImageUrl(selectedDatasetId, file.file_id)"
+              aspect-ratio="1"
+              class="bg-grey-lighten-2"
+              cover
+            />
+            <v-card-title class="text-caption text-center">{{ file.filename }}</v-card-title>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- 데이터셋 미선택 -->
+      <v-card-text v-else>
+        <p class="text-caption">데이터셋을 선택해주세요.</p>
+      </v-card-text>
     </v-card>
+  </v-container>
 </template>
 
-<script>
-export default {
-    data: () => ({
-        datasetDialog: {
-            show: false,
-        },
-        createDto: {
-            ml_task: 'all',
-            name: '',
-            description: '',
-            valid: true,
-        },
-        selectItems: [
-            { text: 'TEXT DEEP TAGGING', value: 0 },
-            { text: 'IMAGE DEEP TAGGING', value: 1 },
-            { text: 'VIRTUAL TRY-ON', value: 2 },
-        ],
-        filter: {
-            selected: {
-                ml_task: null,
-                limit: 10,
-            }
-        },
-        datasets: [],
-        pagenation: {
-            page: 1,
-            length: 0,
-        }
-    }),
-    mounted() {
-        this.getDataset();
-    },
-    methods: {
-        getDataset() {
-            // 데이터셋 조회
-        },
-        createDataset() {
-            // 데이터셋 생성
-        },
-        pageMove(pageNum) {
-            this.pagenation.page = pageNum;
-            this.getDataset();
-        },
-        openDialog() {
-            this.datasetDialog.show = true;
-        },
-        closeDialog() {
-            this.datasetDialog.show = false;
-        },
-        submitDialog() {
-            // 대화 제출
-        }
+<script setup>
+import { ref, onMounted } from "vue";
+import http from "@/api/http";
+
+const datasets = ref([]);
+const loading = ref(false);
+const selectedDatasetId = ref(null);
+const selectedDataset = ref(null);
+const records = ref([]);
+const imageFiles = ref([]);
+
+const fetchDatasets = async () => {
+  loading.value = true;
+  try {
+    const response = await http.getDatasets();
+    datasets.value = response.data;
+
+    if (datasets.value.length > 0) {
+      selectedDatasetId.value = datasets.value[0].id;
+      fetchDatasetDetail(datasets.value[0].id);
     }
-}
+  } catch (error) {
+    console.error("데이터셋 목록 조회 실패:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const fetchDatasetDetail = async (datasetId) => {
+  try {
+    const response = await http.getDatasetDetail(datasetId);
+    records.value = response.data.sample_records || [];
+    selectedDataset.value = response.data;
+
+    if (response.data.labels.includes("image")) {
+      fetchDatasetImageList(datasetId);
+    }
+  } catch (error) {
+    console.error("데이터셋 상세 조회 실패:", error);
+  }
+};
+
+const fetchDatasetImageList = async (datasetId) => {
+  try {
+    const response = await http.getDatasetImageList(datasetId);
+    imageFiles.value = response.data;
+  } catch (error) {
+    console.error("이미지 리스트 로딩 실패:", error);
+  }
+};
+
+onMounted(() => {
+  fetchDatasets();
+});
 </script>
+
+<style>
+.v-data-table-header__content {
+  font-weight: bold !important;
+  justify-content: center !important;
+}
+</style>
