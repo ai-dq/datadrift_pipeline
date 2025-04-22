@@ -25,9 +25,14 @@ function getDatasetImageUrl(datasetId, imageId) {
   return `${api.defaults.baseURL}/datasets/${datasetId}/images/${imageId}`;
 }
 
+function uploadImageFile(datasetId, formData, config = {}) {
+  return api.post(`/datasets/${datasetId}`, formData, config);
+}
+
 export default {
   getDatasets,
   getDatasetDetail,
   getDatasetImageList,
   getDatasetImageUrl,
+  uploadImageFile
 };
