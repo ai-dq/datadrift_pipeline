@@ -74,6 +74,8 @@ class DatasetUpload(APIView):
                 return Response({"error": "Dataset not found."}, status=status.HTTP_404_NOT_FOUND)
         except InvalidId:
             return Response({"error": "Invalid dataset ID."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        base_url = request.build_absolute_uri("/")[:-1]
 
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
@@ -95,11 +97,14 @@ class DatasetUpload(APIView):
             {"$inc": {"num_samples": 1}}
         )
 
+        file_url = base_url+"/datasets/"+str(dataset["_id"])+"/images/"+str(file_id)
+
         return Response({
             "dataset_id": str(dataset["_id"]),
             "file_id": str(file_id),
             "filename": uploaded_file.name,
             "content_type": uploaded_file.content_type,
+            "url": file_url,
             "status": "uploaded"
         }, status=status.HTTP_201_CREATED)
 
@@ -142,6 +147,8 @@ class DatasetImageList(APIView):
                 return Response({"error": "This dataset does not contain images."}, status=status.HTTP_400_BAD_REQUEST)
         except InvalidId:
             return Response({"error": "Invalid dataset ID."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        base_url = request.build_absolute_uri("/")[:-1]
 
         # fs.files에서 이미지 메타 정보 추출
         files_cursor = db.fs.files.find({"metadata.dataset_id": dataset_id})
@@ -152,6 +159,7 @@ class DatasetImageList(APIView):
                 "filename": file["filename"],
                 "content_type": file.get("contentType", "application/octet-stream"),
                 "uploaded_at": file["uploadDate"],
+                "url": f"{base_url}/datasets/{dataset_id}/images/{file['_id']}"
             })
 
         return Response(file_list, status=status.HTTP_200_OK)
