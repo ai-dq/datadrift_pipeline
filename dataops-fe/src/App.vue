@@ -1,5 +1,4 @@
 <template>
-  <p>분석 모델의 성능저하 극복을 위한 데이터 드리프트 관리 기술 개발</p>
   <DatasetsView></DatasetsView>
 </template>
 
