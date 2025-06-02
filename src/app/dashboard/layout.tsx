@@ -1,22 +1,23 @@
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app-sidebar';
-import { cookies } from 'next/headers';
+import { Sidebar } from '@/components/dashboard/sidebar';
+import { Header } from '@/components/dashboard/header';
+import React from 'react';
 
-export default async function Layout({
+export default function DashboardLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
-  const cookieStore = await cookies();
-  const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true';
-
+}>) {
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar />
-      <main>
-        <SidebarTrigger />
-        {children}
-      </main>
-    </SidebarProvider>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Header title="Dashboard" />
+        
+        <main className="flex-1 overflow-y-auto p-6">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }
