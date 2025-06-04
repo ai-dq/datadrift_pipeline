@@ -1,7 +1,4 @@
-import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { JetBrains_Mono } from 'next/font/google';
-import { cookies } from 'next/headers';
+import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
 export const jetbrainsMono = JetBrains_Mono({
@@ -12,7 +9,12 @@ export const jetbrainsMono = JetBrains_Mono({
   adjustFontFallback: true,
 })
 
-export default async function RootLayout({
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+});
+
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

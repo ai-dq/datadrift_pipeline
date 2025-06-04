@@ -1,6 +1,11 @@
 {
   "debug.javascript.defaultRuntimeExecutable": {
-    "pwa-node": "/Users/junnos/.local/share/mise/shims/node"
+    "pwa-node": "/home/junnos/.local/share/mise/shims/node"
+  },
+  "python.defaultInterpreterPath": "/home/junnos/.local/share/mise/installs/python/3.12.10/bin/python",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
   },
   "python.defaultInterpreterPath": "/home/junnos/.local/share/mise/installs/python/3.12.11/bin/python",
   "editor.formatOnSave": true,
