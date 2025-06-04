@@ -3,8 +3,9 @@
     "pwa-node": "/home/junnos/.local/share/mise/shims/node"
   },
   "python.defaultInterpreterPath": "/home/junnos/.local/share/mise/installs/python/3.12.10/bin/python",
+  "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+    "source.fixAll.eslint": "explicit"
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[typescript]": {
