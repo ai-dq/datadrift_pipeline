@@ -10,7 +10,7 @@ export function Header({ title }: HeaderProps) {
     <header className="bg-white border-b border-gray-200 h-16">
       <div className="px-6 h-full flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-800">{title}</h1>
-        
+
         <div className="flex items-center space-x-4">
           <div className="relative">
             <input
@@ -33,7 +33,7 @@ export function Header({ title }: HeaderProps) {
               />
             </svg>
           </div>
-          
+
           <Button variant="primary" size="sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -51,7 +51,7 @@ export function Header({ title }: HeaderProps) {
             </svg>
             New Document
           </Button>
-          
+
           <div className="relative">
             <button className="p-1.5 text-gray-500 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <svg
