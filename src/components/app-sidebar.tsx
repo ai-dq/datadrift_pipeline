@@ -1,10 +1,6 @@
-import {
-  FlipHorizontal,
-  Home,
-  ExternalLink,
-  GalleryVerticalEnd,
-} from 'lucide-react';
+import { ExternalLink, GalleryVerticalEnd } from 'lucide-react';
 
+import { GradioIcon, LabelStudioIcon, SwaggerIcon } from '@/components/icons';
 import {
   Sidebar,
   SidebarContent,
@@ -18,21 +14,21 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
-const items = [
+const services = [
   {
     title: 'LabelStudio',
     url: 'http://121.126.210.2/label-studio',
-    icon: FlipHorizontal,
+    icon: LabelStudioIcon,
   },
   {
     title: 'API docs',
     url: 'http://121.126.210.2/api/docs',
-    icon: Home,
+    icon: SwaggerIcon,
   },
   {
-    title: 'Gradio',
+    title: 'Demo',
     url: 'http://121.126.210.2/demo',
-    icon: Home,
+    icon: GradioIcon,
   },
 ];
 
@@ -61,13 +57,16 @@ export function AppSidebar() {
           <SidebarGroupLabel>Services</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {services.map((service) => (
+                <SidebarMenuItem key={service.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex justify-between w-full">
+                    <a
+                      href={service.url}
+                      className="flex justify-between w-full"
+                    >
                       <div className="flex items-center gap-4">
-                        <item.icon className="flex-shrink-0 size-4" />
-                        <span>{item.title}</span>
+                        <service.icon className="flex-shrink-0 size-4" />
+                        <span>{service.title}</span>
                       </div>
                       <ExternalLink className="opacity-50" />
                     </a>
