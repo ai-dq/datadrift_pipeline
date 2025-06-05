@@ -6,17 +6,17 @@ import type { MenuItem, ServiceItem } from './types';
 export const services: ServiceItem[] = [
   {
     title: 'LabelStudio',
-    url: 'http://121.126.210.2/label-studio',
+    url: process.env.LABEL_STUDIO_URL || 'http://localhost:9090',
     icon: LabelStudioIcon,
   },
   {
     title: 'API docs',
-    url: 'http://121.126.210.2/api/docs',
+    url: process.env.CORE_API_SWAGGER_URL || 'http://localhost:9030/docs',
     icon: SwaggerIcon,
   },
   {
     title: 'Demo',
-    url: 'http://121.126.210.2/demo',
+    url: process.env.CORE_DEMO_URL || 'http://localhost:9031',
     icon: GradioIcon,
   },
 ];
