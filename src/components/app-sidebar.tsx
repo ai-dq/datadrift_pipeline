@@ -62,6 +62,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <a
                       href={service.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex justify-between w-full"
                     >
                       <div className="flex items-center gap-4">
