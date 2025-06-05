@@ -8,12 +8,12 @@ export interface ServiceItem {
 
 export interface MenuChildItem {
   title: string;
-  url: string;
+  uri: string;
 }
 
 export interface MenuItem {
   title: string;
-  url: string;
+  uri: string;
   icon: LucideIcon;
   isActive: boolean;
   children: MenuChildItem[];

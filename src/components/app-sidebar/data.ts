@@ -1,4 +1,4 @@
-import { Bot, Settings2 } from 'lucide-react';
+import { Bot } from 'lucide-react';
 
 import { GradioIcon, LabelStudioIcon, SwaggerIcon } from '@/components/icons';
 import type { MenuItem, ServiceItem } from './types';
@@ -6,47 +6,35 @@ import type { MenuItem, ServiceItem } from './types';
 export const services: ServiceItem[] = [
   {
     title: 'LabelStudio',
-    url: '/dashboard/labelstudio',
+    url: 'http://121.126.210.2/label-studio',
     icon: LabelStudioIcon,
   },
   {
     title: 'API docs',
-    url: '/dashboard/swagger',
+    url: 'http://121.126.210.2/api/docs',
     icon: SwaggerIcon,
   },
   {
     title: 'Demo',
-    url: '/dashboard/gradio',
+    url: 'http://121.126.210.2/demo',
     icon: GradioIcon,
   },
 ];
 
 export const menuItems: MenuItem[] = [
   {
-    title: 'Label Studio',
-    url: '/dashboard/projects',
-    icon: Settings2,
-    isActive: true,
-    children: [
-      {
-        title: 'Projects',
-        url: '#',
-      },
-    ],
-  },
-  {
     title: 'Models',
-    url: '/models',
+    uri: '#',
     icon: Bot,
-    isActive: true,
+    isActive: false,
     children: [
       {
         title: 'Versions',
-        url: '#',
+        uri: '#',
       },
       {
         title: 'Logs',
-        url: '#',
+        uri: '#',
       },
     ],
   },

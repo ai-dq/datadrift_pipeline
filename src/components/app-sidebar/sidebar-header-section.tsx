@@ -6,14 +6,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import Link from 'next/link';
 
 export const SidebarHeaderSection = () => (
   <SidebarHeader>
     <SidebarMenu>
-      <SidebarMenuItem className="flex items-center justify-between">
+      <SidebarMenuItem>
         <SidebarMenuButton size="lg" asChild>
-          <Link href="/">
+          <a href="#">
             <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
               <GalleryVerticalEnd className="size-4" />
             </div>
@@ -21,7 +20,7 @@ export const SidebarHeaderSection = () => (
               <span className="font-medium">Q-OCR</span>
               <span className="font-normal">v0.0.1 🌈</span>
             </div>
-          </Link>
+          </a>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>

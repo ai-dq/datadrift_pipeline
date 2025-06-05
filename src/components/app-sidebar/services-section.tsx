@@ -9,7 +9,7 @@ import { ServiceMenuItemComponent } from './service-menu-item';
 
 export const ServicesSection = () => (
   <SidebarGroup>
-    <SidebarGroupLabel className="text-base">Services</SidebarGroupLabel>
+    <SidebarGroupLabel>Services</SidebarGroupLabel>
     <SidebarGroupContent>
       <SidebarMenu>
         {services.map((service) => (

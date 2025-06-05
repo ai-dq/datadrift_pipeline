@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
 
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import type { ServiceItem } from './types';
@@ -10,12 +10,18 @@ interface ServiceMenuItemProps {
 export const ServiceMenuItemComponent = ({ service }: ServiceMenuItemProps) => (
   <SidebarMenuItem>
     <SidebarMenuButton asChild>
-      <Link href={service.url} className="flex w-full justify-between">
+      <a
+        href={service.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex justify-between w-full"
+      >
         <div className="flex items-center gap-4">
-          <service.icon className="size-4 flex-shrink-0" />
-          <span className="text-sm">{service.title}</span>
+          <service.icon className="flex-shrink-0 size-4" />
+          <span>{service.title}</span>
         </div>
-      </Link>
+        <ExternalLink className="opacity-50" />
+      </a>
     </SidebarMenuButton>
   </SidebarMenuItem>
 );

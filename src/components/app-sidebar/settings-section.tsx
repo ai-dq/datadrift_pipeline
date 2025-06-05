@@ -9,7 +9,7 @@ import { menuItems } from './data';
 
 export const SettingsSection = () => (
   <SidebarGroup>
-    <SidebarGroupLabel className="text-base">Settings</SidebarGroupLabel>
+    <SidebarGroupLabel>Settings</SidebarGroupLabel>
     <SidebarGroupContent>
       <SidebarMenu>
         {menuItems.map((item) => (
