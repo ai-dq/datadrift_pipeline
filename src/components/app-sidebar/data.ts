@@ -24,17 +24,17 @@ export const services: ServiceItem[] = [
 export const menuItems: MenuItem[] = [
   {
     title: 'Models',
-    uri: '#',
+    url: '/models',
     icon: Bot,
-    isActive: false,
+    isActive: true,
     children: [
       {
         title: 'Versions',
-        uri: '#',
+        url: '#',
       },
       {
         title: 'Logs',
-        uri: '#',
+        url: '#',
       },
     ],
   },
