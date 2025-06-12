@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { cn } from '@/utils/tailwind.util';
+import { cn } from '@/lib/utils';
 
 function Card({ className, ...props }: React.ComponentProps<'div'>) {
   return (
@@ -85,8 +85,4 @@ export {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 };

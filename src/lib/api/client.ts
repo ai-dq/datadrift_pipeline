@@ -1,348 +1,45 @@
 import { useCallback, useState } from 'react';
 import { GetMLModelsResponse, MLModelResponse } from './models/ml-models';
 
+// API configuration
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-const NEXT_PUBLIC_API_PROXY_PREFIX = '/api/external';
-const API_BASE_URL = isDevelopment ? 'http://121.126.210.2/api/v1' : '/';
-const effectivePrefix = isDevelopment ? '' : NEXT_PUBLIC_API_PROXY_PREFIX;
-
-type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  headers?: Record<string, string>;
-  body?: any;
-  signal?: AbortSignal;
-};
-
-export class ApiClient {
-  private baseURL: string;
-  private prefix: string;
-
-  constructor(baseURL: string, prefix: string) {
-    this.baseURL = baseURL;
-    this.prefix = prefix;
-  }
-
-  private async request<T = any>(
-    endpoint: string,
-    options: RequestOptions = {},
-  ): Promise<T> {
-    const { method = 'GET', headers = {}, body, signal } = options;
-
-    const config: RequestInit = {
-      method,
-      headers: {
-        ...(body instanceof FormData
-          ? {}
-          : { 'Content-Type': 'application/json' }),
-        ...headers,
-      },
-      signal,
-    };
-
-    if (body && method !== 'GET') {
-      config.body = body instanceof FormData ? body : JSON.stringify(body);
-    }
-
-    const finalEndpoint = `${this.prefix}${endpoint}`;
-    const requestUrl = `${this.baseURL.replace(/\/$/, '')}${finalEndpoint.startsWith('/') ? '' : '/'}${finalEndpoint}`;
-
-    try {
-      const response = await fetch(requestUrl, config);
-
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: 'Unknown error', details: response.statusText };
-        }
-        throw new ApiError(
-          response.status,
-          errorData.error || response.statusText,
-          errorData.details,
-        );
-      }
-
-      if (response.status === 204) {
-        return {} as T;
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        return await response.json();
-      }
-      return (await response.text()) as unknown as T;
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        0,
-        'Network error or request failed',
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  }
-
-  async get<T = any>(
-    endpoint: string,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
-  }
-
-  async post<T = any>(
-    endpoint: string,
-    data?: any,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: data,
-    });
-  }
-
-  async put<T = any>(
-    endpoint: string,
-    data?: any,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'PUT', body: data });
-  }
-
-  async patch<T = any>(
-    endpoint: string,
-    data?: any,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'PATCH',
-      body: data,
-    });
-  }
-
-  async delete<T = any>(
-    endpoint: string,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
-  }
+let API_BASE_URL;
+if (isDevelopment) {
+  API_BASE_URL = `http://121.126.210.2/api/v1`;
+} else {
+  API_BASE_URL = `http://localhost:${process.env.CORE_API_PORT || '9030'}/api/v1`;
 }
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public message: string,
-    public details?: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-    Object.setPrototypeOf(this, ApiError.prototype);
-  }
-}
-
-export const apiClientInstance = new ApiClient(API_BASE_URL, effectivePrefix);
+// Create axios instance
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  maxRedirects: 3,
+});
 
 export const getModels = async (): Promise<GetMLModelsResponse> => {
   try {
-    const response =
-      await apiClientInstance.get<GetMLModelsResponse>('/models');
-    return response;
+    const response = await apiClient.get<GetMLModelsResponse>('/models');
+    return response.data;
   } catch (error) {
     console.error(`Failed for getModels:`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(0, 'Failed to get models', String(error));
+    throw error;
   }
-}
-
-function isTokenExpired(token: string): boolean {
-  const payload = parseJwt(token);
-  if (!payload || !payload.exp) return true;
-  return Date.now() >= payload.exp * 1000;
-}
-
-async function refreshAccessToken(): Promise<string | null> {
-  const refresh = getToken('refresh_token');
-  if (!refresh) return null;
-  try {
-    const access = await getAccessTokenByRefresh(refresh);
-    setToken('access_token', access);
-    return access;
-  } catch {
-    removeToken('access_token');
-    removeToken('refresh_token');
-    return null;
-  }
-}
-
-export class ApiClient {
-  private baseURL: string;
-
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
-  }
-
-  private async getValidAccessToken(): Promise<string | null> {
-    let access = getToken('access_token');
-    if (!access || isTokenExpired(access)) {
-      access = await refreshAccessToken();
-    }
-    return access;
-  }
-
-  private async request<T = any>(
-    endpoint: string,
-    options: RequestOptions = {},
-  ): Promise<T> {
-    const { method = 'GET', headers = {}, body, signal } = options;
-    let authHeaders = { ...headers };
-    const access = await this.getValidAccessToken();
-    if (access) {
-      authHeaders['Authorization'] = `Bearer ${access}`;
-    }
-    const config: RequestInit = {
-      method,
-      headers: {
-        ...(body instanceof FormData
-          ? {}
-          : { 'Content-Type': 'application/json' }),
-        ...authHeaders,
-      },
-      signal,
-      credentials: 'include', // Crucial for sending cookies cross-origin
-    };
-
-    if (body && method !== 'GET') {
-      config.body = body instanceof FormData ? body : JSON.stringify(body);
-    }
-
-    const finalEndpoint = `${endpoint}`;
-    const requestUrl = `${this.baseURL.replace(/\/$/, '')}${finalEndpoint.startsWith('/') ? '' : '/'}${finalEndpoint}`;
-
-    try {
-      const response = await fetch(requestUrl, config);
-
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: 'Unknown error', details: response.statusText };
-        }
-        throw new ApiError(
-          response.status,
-          errorData.error || response.statusText,
-          errorData.details,
-        );
-      }
-
-      if (response.status === 204) {
-        return {} as T;
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        return await response.json();
-      }
-      return (await response.text()) as unknown as T;
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        0,
-        'Network error or request failed',
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  }
-
-  async get<T = any>(
-    endpoint: string,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
-  }
-
-  async post<T = any>(
-    endpoint: string,
-    data?: any,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: data,
-    });
-  }
-
-  async put<T = any>(
-    endpoint: string,
-    data?: any,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'PUT', body: data });
-  }
-
-  async patch<T = any>(
-    endpoint: string,
-    data?: any,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'PATCH',
-      body: data,
-    });
-  }
-
-  async delete<T = any>(
-    endpoint: string,
-    options?: Omit<RequestOptions, 'method' | 'body'>,
-  ): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
-  }
-}
-
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public message: string,
-    public details?: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-    Object.setPrototypeOf(this, ApiError.prototype);
-  }
-}
-
-export const apiClientInstance = new ApiClient(API_BASE_URL);
-
-// React Hook for API calls with loading state
-type UseApiOptions<T> = {
-  onSuccess?: (data: T) => void;
-  onError?: (error: ApiError) => void;
 };
 
 export const getModelById = async (
   modelId: number,
 ): Promise<MLModelResponse> => {
   try {
-    const response = await apiClientInstance.get<MLModelResponse>(
-      `/models/${modelId}`,
-    );
-    return response;
+    const response = await apiClient.get<MLModelResponse>(`/models/${modelId}`);
+    return response.data;
   } catch (error) {
     console.error(`Failed for getModelById (id: ${modelId}):`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      0,
-      `Failed to get model by id: ${modelId}. Details: ${String(error)}`,
-      String(error),
-    );
+    throw error;
   }
 };
 
