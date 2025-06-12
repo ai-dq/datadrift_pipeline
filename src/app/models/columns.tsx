@@ -1,205 +1,88 @@
-import ModelTypeBadge from '@/components/model-type-badge';
+'use client';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Model, ModelType } from '@/entities/ml-model';
 import { ColumnDef } from '@tanstack/react-table';
-import {
-  ArrowUpDown,
-  Filter,
-  Info,
-  MoreHorizontal,
-  Tag,
-  Trash2,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import Link from 'next/link';
 
-// Component to handle type filtering
-const TypeFilterCell = ({ column }: { column: any }) => {
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-
-  const handleTypeToggle = (type: string) => {
-    const newSelectedTypes = selectedTypes.includes(type)
-      ? selectedTypes.filter((t) => t !== type)
-      : [...selectedTypes, type];
-
-    setSelectedTypes(newSelectedTypes);
-
-    // Apply filter to column
-    if (newSelectedTypes.length === 0) {
-      column.setFilterValue(undefined);
-    } else {
-      column.setFilterValue(newSelectedTypes);
-    }
-  };
-
-  const clearFilters = () => {
-    setSelectedTypes([]);
-    column.setFilterValue(undefined);
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex items-center gap-2">
-          Type
-          {selectedTypes.length > 0 ? (
-            <Filter className="size-4 text-blue-600" />
-          ) : (
-            <Tag className="size-4" />
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        <div className="p-2">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Filter by Type</span>
-            {selectedTypes.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="h-6 px-2 text-xs"
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-          <div className="space-y-2">
-            {ModelType.allCases().map((type) => (
-              <div key={type} className="flex items-center space-x-2">
-                <Checkbox
-                  id={type}
-                  checked={selectedTypes.includes(type)}
-                  onCheckedChange={() => handleTypeToggle(type)}
-                />
-<<<<<<< HEAD:src/app/models/columns.tsx
-                <label
-                  htmlFor={type.value}
-                  className="text-sm font-normal cursor-pointer flex-1"
-                >
-                  {type.label}
-=======
-                <label htmlFor={type} className="cursor-pointer flex-1">
-                  <ModelTypeBadge type={type} />
->>>>>>> e742211ff (♻️ Replace model type badge to reusable component):src/app/(protected)/dashboard/models/columns.tsx
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+export type Model = {
+  id: string;
+  name: string;
+  type: 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
+  version: string;
+  updatedAt: string;
+  description?: string;
 };
 
-// Component to handle actions, including router usage
-const ModelActionsCell = ({ model }: { model: Model }) => {
-  const router = useRouter();
-
-  const handleDetailClick = () => {
-    router.push(`/models/${model.id}`);
-  };
-
-  const handleDeleteClick = () => {
-    throw new Error('Delete model');
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="size-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          variant="default"
-          className="flex items-center gap-2"
-          onClick={handleDetailClick}
-        >
-          <Info className="size-4" />
-          View Details
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          className="flex items-center gap-2"
-          onClick={handleDeleteClick}
-        >
-          <Trash2 className="size-4" />
-          Delete Model
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+const getTypeBadge = (type: Model['type']) => {
+  switch (type) {
+    case 'layout':
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+          Layout Detection
+        </Badge>
+      );
+    case 'ocrcls':
+      return (
+        <Badge className="bg-lime-100 text-lime-800 hover:bg-lime-200">
+          OCR Classification
+        </Badge>
+      );
+    case 'ocrrec':
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+          OCR Recognition
+        </Badge>
+      );
+    case 'ocrdet':
+      return (
+        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
+          OCR Detection
+        </Badge>
+      );
+    case 'tabrec':
+      return (
+        <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-200">
+          Table
+        </Badge>
+      );
+    default:
+      return <Badge variant="secondary">{type}</Badge>;
+  }
 };
 
 export const columns: ColumnDef<Model>[] = [
   {
     accessorKey: 'id',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          ID
-          <ArrowUpDown className="ml-2 size-4" />
-        </Button>
-      );
-    },
+    header: 'ID',
     cell: ({ row }) => {
       const id = row.getValue('id') as Model['id'];
-      return <div className="ml-4">{id}</div>;
+      return id;
     },
-    size: 50,
   },
   {
     accessorKey: 'name',
     header: 'Model Name',
     cell: ({ row }) => {
       const name = row.getValue('name') as Model['name'];
-      return (
-        <Button
-          variant="link"
-          className="font-medium"
-          onClick={() => {
-            // console.log('sdfkj');
-          }}
-        >
-          {name}
-        </Button>
-      );
+      return <div className="font-medium">{name}</div>;
     },
-    size: 250,
   },
   {
     accessorKey: 'type',
-    header: ({ column }) => <TypeFilterCell column={column} />,
-    cell: ({ row }) => <ModelTypeBadge type={row.original.type} />,
-    filterFn: (row, id, value) => {
-      if (!value || value.length === 0) return true;
-      return value.includes(row.getValue(id));
+    header: 'Type',
+    cell: ({ row }) => {
+      const type = row.getValue('type') as Model['type'];
+      return <div className="font-medium">{getTypeBadge(type)}</div>;
     },
-    size: 100,
   },
   {
     accessorKey: 'version',
     header: 'Version',
     cell: ({ row }) => {
       const version = row.getValue('version') as Model['version'];
-      return <div className="font-mono text-sm">v{version}</div>;
+      return version;
     },
-    size: 100,
   },
   {
     accessorKey: 'updatedAt',
@@ -208,11 +91,25 @@ export const columns: ColumnDef<Model>[] = [
       const updatedAt = row.getValue('updatedAt') as Model['updatedAt'];
       return updatedAt;
     },
-    size: 100,
   },
   {
-    id: 'actions',
-    cell: ({ row }) => <ModelActionsCell model={row.original} />,
-    size: 40,
+    accessorKey: 'description',
+    header: 'Description',
+    cell: ({ row }) => {
+      const description = row.getValue('description') as Model['description'];
+      return description;
+    },
+  },
+  {
+    id: 'action',
+    header: () => null,
+    cell: ({ row }) => {
+      const model = row.original;
+      return (
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/models/${model.id}`}>View Details</Link>
+        </Button>
+      );
+    },
   },
 ];
