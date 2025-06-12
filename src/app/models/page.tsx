@@ -34,8 +34,22 @@ async function getModelsData(): Promise<Model[]> {
   }
 }
 
-export default async function ModelsPage() {
-  const data = await getModelsData();
+export default function ModelsPage() {
+  const [data, setData] = useState<Model[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const modelsData = await getModelsData();
+        setData(modelsData);
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+        // Optionally, set an error state here to display in the UI
+      }
+    }
+
+    fetchData();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   return (
     <div className="container mx-auto px-4 py-8">
