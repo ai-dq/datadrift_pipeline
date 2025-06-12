@@ -9,7 +9,7 @@ if (isDevelopment) {
   API_BASE_URL = `http://121.126.210.2/api/v1`;
 } else {
   const coreApiPort = process.env.CORE_API_PORT || '9030';
-  API_BASE_URL = `http://api:${coreApiPort}/api/v1`;
+  API_BASE_URL = `http://api:${coreApiPort}/v1`;
 }
 
 // Create axios instance
