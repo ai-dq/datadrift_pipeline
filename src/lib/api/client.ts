@@ -2,7 +2,14 @@ import axios from 'axios';
 import { MLModelResponse, GetMLModelsResponse } from './models/ml-models';
 
 // API configuration
-const API_BASE_URL = `http://localhost:${process.env.CORE_API_PORT || '9030'}/v1`;
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+let API_BASE_URL;
+if (isDevelopment) {
+  API_BASE_URL = `http://121.126.210.2/api/v1`;
+} else {
+  API_BASE_URL = `http://localhost:${process.env.CORE_API_PORT || '9030'}/api/v1`;
+}
 
 // Create axios instance
 const apiClient = axios.create({
@@ -11,19 +18,30 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  maxRedirects: 3,
 });
 
 // API functions
 export const getModels = async (): Promise<GetMLModelsResponse> => {
-  const response = await apiClient.get<GetMLModelsResponse>('/models');
-  return response.data;
+  try {
+    const response = await apiClient.get<GetMLModelsResponse>('/models');
+    return response.data;
+  } catch (error) {
+    console.error(`Failed for getModels:`, error);
+    throw error;
+  }
 };
 
 export const getModelById = async (
   modelId: number,
 ): Promise<MLModelResponse> => {
-  const response = await apiClient.get<MLModelResponse>(`/models/${modelId}`);
-  return response.data;
+  try {
+    const response = await apiClient.get<MLModelResponse>(`/models/${modelId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed for getModelById (id: ${modelId}):`, error);
+    throw error;
+  }
 };
 
 export default apiClient;

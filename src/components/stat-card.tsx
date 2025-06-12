@@ -8,21 +8,16 @@ interface ModelStatCardProps {
   icon: React.ElementType;
 }
 
-export function StatCard({
-  title,
-  description,
-  value,
-  icon: Icon,
-}: ModelStatCardProps) {
+export function StatCard({ title, description, value, icon: Icon }: ModelStatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row justify-between">
         <CardTitle>{title}</CardTitle>
-        <Icon className="text-muted-foreground size-4" />
+        <Icon className="size-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        <p className="text-muted-foreground text-sm">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </CardContent>
     </Card>
   );

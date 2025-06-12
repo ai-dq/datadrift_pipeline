@@ -1,9 +1,16 @@
-'use client';
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ColumnDef } from '@tanstack/react-table';
-import Link from 'next/link';
+import { Info, MoreHorizontal } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Trash2 } from 'lucide-react';
 
 export type Model = {
   id: string;
@@ -81,7 +88,7 @@ export const columns: ColumnDef<Model>[] = [
     header: 'Version',
     cell: ({ row }) => {
       const version = row.getValue('version') as Model['version'];
-      return version;
+      return <div className="font-mono text-sm">v{version}</div>;
     },
   },
   {
@@ -93,22 +100,41 @@ export const columns: ColumnDef<Model>[] = [
     },
   },
   {
-    accessorKey: 'description',
-    header: 'Description',
-    cell: ({ row }) => {
-      const description = row.getValue('description') as Model['description'];
-      return description;
-    },
-  },
-  {
-    id: 'action',
-    header: () => null,
+    id: 'actions',
     cell: ({ row }) => {
       const model = row.original;
+      const router = useRouter();
+
       return (
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/models/${model.id}`}>View Details</Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="size-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              variant="default"
+              className="flex items-center gap-2"
+              onClick={() => router.push(`/models/${model.id}`)}
+            >
+              <Info className="size-4" />
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              className="flex items-center gap-2"
+              onClick={() =>
+                console.log('Attempting to delete model:', model.id)
+              }
+            >
+              <Trash2 className="size-4" />
+              Delete Model
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       );
     },
   },
