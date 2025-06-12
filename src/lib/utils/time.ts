@@ -34,9 +34,7 @@ export function formatRelativeTime(date: Date | string): string {
 
   // Minutes
   if (diffInMinutes < 60) {
-    return diffInMinutes === 1
-      ? '1 minute ago'
-      : `${diffInMinutes} minutes ago`;
+    return diffInMinutes === 1 ? '1 minute ago' : `${diffInMinutes} minutes ago`;
   }
 
   // Hours
