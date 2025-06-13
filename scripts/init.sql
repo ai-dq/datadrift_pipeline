@@ -17,7 +17,8 @@ create table if not exists ml_models
     type        model_type,
     created_at  timestamp with time zone default CURRENT_TIMESTAMP not null,
     updated_at  timestamp with time zone default CURRENT_TIMESTAMP not null,
-    description text
+    description text,
+    version     text                                               not null
 );
 
 alter table ml_models
