@@ -1,12 +1,7 @@
-import { useCallback, useState } from 'react';
-import { GetMLModelsResponse, MLModelResponse } from './models/ml-models';
-
-// API configuration
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-const NEXT_PUBLIC_API_PROXY_PREFIX = '/api/external';
-const API_BASE_URL = isDevelopment ? 'http://121.126.210.2/api/v1' : '/';
-const effectivePrefix = isDevelopment ? '' : NEXT_PUBLIC_API_PROXY_PREFIX;
+/**
+ * API 클라이언트 유틸리티
+ * 모든 API 호출은 이 클라이언트를 통해 수행하여 자동으로 프록시를 거치도록 합니다.
+ */
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -17,11 +12,11 @@ type RequestOptions = {
 
 export class ApiClient {
   private baseURL: string;
-  private prefix: string;
 
-  constructor(baseURL: string, prefix: string) {
-    this.baseURL = baseURL;
-    this.prefix = prefix;
+  constructor() {
+    // 클라이언트 사이드에서는 상대 경로 사용
+    // 서버 사이드에서는 전체 URL 사용 가능
+    this.baseURL = '/api/external';
   }
 
   private async request<T = any>(
@@ -33,38 +28,32 @@ export class ApiClient {
     const config: RequestInit = {
       method,
       headers: {
-        ...(body instanceof FormData
-          ? {}
-          : { 'Content-Type': 'application/json' }),
+        'Content-Type': 'application/json',
         ...headers,
       },
       signal,
     };
 
     if (body && method !== 'GET') {
-      config.body = body instanceof FormData ? body : JSON.stringify(body);
+      config.body = JSON.stringify(body);
     }
 
-    const finalEndpoint = `${this.prefix}${endpoint}`;
-    const requestUrl = `${this.baseURL.replace(/\/$/, '')}${finalEndpoint.startsWith('/') ? '' : '/'}${finalEndpoint}`;
-
     try {
-      const response = await fetch(requestUrl, config);
+      const response = await fetch(`${this.baseURL}${endpoint}`, config);
 
       if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: 'Unknown error', details: response.statusText };
-        }
+        const error = await response.json().catch(() => ({
+          error: 'Unknown error',
+          details: response.statusText,
+        }));
         throw new ApiError(
           response.status,
-          errorData.error || response.statusText,
-          errorData.details,
+          error.error || response.statusText,
+          error.details,
         );
       }
 
+      // 204 No Content 처리
       if (response.status === 204) {
         return {} as T;
       }
@@ -72,20 +61,22 @@ export class ApiClient {
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         return await response.json();
+      } else {
+        return (await response.text()) as unknown as T;
       }
-      return (await response.text()) as unknown as T;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
       throw new ApiError(
         0,
-        'Network error or request failed',
-        error instanceof Error ? error.message : String(error),
+        'Network error',
+        error instanceof Error ? error.message : 'Unknown error',
       );
     }
   }
 
+  // HTTP 메서드별 헬퍼 함수들
   async get<T = any>(
     endpoint: string,
     options?: Omit<RequestOptions, 'method' | 'body'>,
@@ -133,6 +124,7 @@ export class ApiClient {
   }
 }
 
+// 커스텀 에러 클래스
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -141,44 +133,12 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.name = 'ApiError';
-    Object.setPrototypeOf(this, ApiError.prototype);
   }
 }
 
-export const apiClientInstance = new ApiClient(API_BASE_URL, effectivePrefix);
-
-export const getModels = async (): Promise<GetMLModelsResponse> => {
-  try {
-    const response =
-      await apiClientInstance.get<GetMLModelsResponse>('/models');
-    return response;
-  } catch (error) {
-    console.error(`Failed for getModels:`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(0, 'Failed to get models', String(error));
-  }
-};
-
-export const getModelById = async (
-  modelId: number,
-): Promise<MLModelResponse> => {
-  try {
-    const response = await apiClientInstance.get<MLModelResponse>(
-      `/models/${modelId}`,
-    );
-    return response;
-  } catch (error) {
-    console.error(`Failed for getModelById (id: ${modelId}):`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      0,
-      `Failed to get model by id: ${modelId}. Details: ${String(error)}`,
-      String(error),
-    );
-  }
-};
-
 // React Hook for API calls with loading state
+import { useCallback, useState } from 'react';
+
 type UseApiOptions<T> = {
   onSuccess?: (data: T) => void;
   onError?: (error: ApiError) => void;
@@ -193,18 +153,16 @@ export function useApi<T = any>(
   const [loading, setLoading] = useState(false);
 
   const execute = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
+      setLoading(true);
+      setError(null);
       const result = await apiCall();
       setData(result);
       options.onSuccess?.(result);
       return result;
     } catch (err) {
       const apiError =
-        err instanceof ApiError
-          ? err
-          : new ApiError(0, 'Unknown error during API call', String(err));
+        err instanceof ApiError ? err : new ApiError(0, 'Unknown error');
       setError(apiError);
       options.onError?.(apiError);
       throw apiError;
@@ -215,5 +173,3 @@ export function useApi<T = any>(
 
   return { data, error, loading, execute };
 }
-
-export default apiClientInstance;
