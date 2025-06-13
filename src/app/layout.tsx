@@ -1,3 +1,6 @@
+import { AppSidebar } from '@/components/app-sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { cookies } from 'next/headers';
 import './globals.css';
 
 export default async function RootLayout({
@@ -12,7 +15,13 @@ export default async function RootLayout({
           'antialiased bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800'
         }
       >
-        <main className="flex-1">{children}</main>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          <AppSidebar />
+          <main className="flex-1">
+            <SidebarTrigger />
+            {children}
+          </main>
+        </SidebarProvider>
       </body>
     </html>
   );
