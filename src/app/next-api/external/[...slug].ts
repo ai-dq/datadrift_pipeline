@@ -64,6 +64,11 @@ async function handler(
       }
     }
 
+    console.log('Request URL:', urlWithParams);
+    console.log('Request Method:', req.method);
+    console.log('Request Headers:', requestHeaders);
+    console.log('Request Body:', body);
+
     const response = await fetch(urlWithParams, {
       method: req.method,
       headers: requestHeaders,
