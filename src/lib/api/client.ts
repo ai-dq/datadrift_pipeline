@@ -144,6 +144,9 @@ export class ApiError extends Error {
   }
 }
 
+console.log(
+  `API client will send requests to ${API_BASE_URL} with prefix ${effectivePrefix}`,
+);
 export const apiClientInstance = new ApiClient(API_BASE_URL, effectivePrefix);
 
 export const getModels = async (): Promise<GetMLModelsResponse> => {
