@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { ApiModelResponse, getModels } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils/time';
-import { Activity, CreditCard, DollarSign, Users } from 'lucide-react';
+import { Activity, CreditCard, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { columns, Model } from './columns';
 import { DataTable } from './data-table';
@@ -58,12 +58,12 @@ export default function ModelsPage() {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Models</h1>
-        <p className="text-gray-600 text-sm">Models</p>
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">Models</h1>
+        <p className="text-sm text-gray-600">Models</p>
       </div>
 
       {/* Stats */}
-      <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-4 mb-8">
+      <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="OCR"
           description="Number of OCR models"

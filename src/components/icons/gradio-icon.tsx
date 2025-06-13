@@ -1,7 +1,15 @@
+import Image from 'next/image';
+
 interface GradioIconProps {
   className?: string;
 }
 
 export const GradioIcon = ({ className = 'size-4' }: GradioIconProps) => (
-  <img src="/gradio.svg" alt="Gradio" className={className} />
+  <Image
+    src="/gradio.svg"
+    alt="Gradio"
+    className={className}
+    width={16}
+    height={16}
+  />
 );

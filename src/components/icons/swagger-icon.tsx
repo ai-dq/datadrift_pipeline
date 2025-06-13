@@ -1,7 +1,15 @@
+import Image from 'next/image';
+
 interface SwaggerIconProps {
   className?: string;
 }
 
 export const SwaggerIcon = ({ className = 'size-4' }: SwaggerIconProps) => (
-  <img src="/swagger.svg" alt="Swagger" className={className} />
+  <Image
+    src="/swagger.svg"
+    alt="Swagger"
+    className={className}
+    width={16}
+    height={16}
+  />
 );
