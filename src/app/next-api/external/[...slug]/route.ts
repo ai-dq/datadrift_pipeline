@@ -23,6 +23,8 @@ async function handler(
   req: NextRequest,
   { params }: { params: { slug: string[] } },
 ) {
+  console.info(`Got request to ${req.url}`);
+
   const { slug } = params;
   const path = slug.join('/');
 
