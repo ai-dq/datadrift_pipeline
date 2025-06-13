@@ -10,7 +10,7 @@ export const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
   display: 'swap',
   adjustFontFallback: true,
-})
+});
 
 export default async function RootLayout({
   children,

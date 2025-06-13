@@ -25,7 +25,9 @@ const apiClient = axios.create({
 // API functions
 export const getModels = async (): Promise<GetMLModelsResponse> => {
   try {
-    const response = await apiClient.get<GetMLModelsResponse>('/models');
+    const response = await apiClient.get<GetMLModelsResponse>(
+      `${effectivePrefix}/models`,
+    );
     return response.data;
   } catch (error) {
     console.error(`Failed for getModels:`, error);
@@ -37,7 +39,9 @@ export const getModelById = async (
   modelId: number,
 ): Promise<MLModelResponse> => {
   try {
-    const response = await apiClient.get<MLModelResponse>(`/models/${modelId}`);
+    const response = await apiClient.get<MLModelResponse>(
+      `${effectivePrefix}/models/${modelId}`,
+    );
     return response.data;
   } catch (error) {
     console.error(`Failed for getModelById (id: ${modelId}):`, error);

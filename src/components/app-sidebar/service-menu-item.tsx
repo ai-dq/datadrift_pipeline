@@ -14,10 +14,10 @@ export const ServiceMenuItemComponent = ({ service }: ServiceMenuItemProps) => (
         href={service.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex justify-between w-full"
+        className="flex w-full justify-between"
       >
         <div className="flex items-center gap-4">
-          <service.icon className="flex-shrink-0 size-4" />
+          <service.icon className="size-4 flex-shrink-0" />
           <span>{service.title}</span>
         </div>
         <ExternalLink className="opacity-50" />
