@@ -18,7 +18,7 @@ export const ServiceMenuItemComponent = ({ service }: ServiceMenuItemProps) => (
       >
         <div className="flex items-center gap-4">
           <service.icon className="size-4 flex-shrink-0" />
-          <span>{service.title}</span>
+          <span className="text-sm">{service.title}</span>
         </div>
         <ExternalLink className="opacity-50" />
       </a>

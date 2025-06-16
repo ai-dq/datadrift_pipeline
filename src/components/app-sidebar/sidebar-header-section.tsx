@@ -5,14 +5,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 
 export const SidebarHeaderSection = () => (
   <SidebarHeader>
     <SidebarMenu>
-      <SidebarMenuItem>
+      <SidebarMenuItem className="flex items-center justify-between">
         <SidebarMenuButton size="lg" asChild>
-          <a href="#">
+          <a href="/">
             <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
               <GalleryVerticalEnd className="size-4" />
             </div>
