@@ -3,11 +3,9 @@ import { GetMLModelsResponse, MLModelResponse } from './models/ml-models';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-const NEXT_PUBLIC_API_PROXY_PREFIX = '/next-api/external';
 const API_BASE_URL = isDevelopment
   ? 'http://121.126.210.2/api/v1'
-  : `http://api:${process.env.NEXT_PUBLIC_CORE_API_PORT}/v1`;
-const effectivePrefix = isDevelopment ? '/' : NEXT_PUBLIC_API_PROXY_PREFIX;
+  : '/proxy/api/v1';
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -18,11 +16,9 @@ type RequestOptions = {
 
 export class ApiClient {
   private baseURL: string;
-  private prefix: string;
 
-  constructor(baseURL: string, prefix: string) {
+  constructor(baseURL: string) {
     this.baseURL = baseURL;
-    this.prefix = prefix;
   }
 
   private async request<T = any>(
@@ -46,7 +42,7 @@ export class ApiClient {
       config.body = body instanceof FormData ? body : JSON.stringify(body);
     }
 
-    const finalEndpoint = `${this.prefix}${endpoint}`;
+    const finalEndpoint = `${endpoint}`;
     const requestUrl = `${this.baseURL.replace(/\/$/, '')}${finalEndpoint.startsWith('/') ? '' : '/'}${finalEndpoint}`;
 
     try {
@@ -146,10 +142,7 @@ export class ApiError extends Error {
   }
 }
 
-console.log(
-  `API client will send requests to ${API_BASE_URL} with prefix ${effectivePrefix}`,
-);
-export const apiClientInstance = new ApiClient(API_BASE_URL, effectivePrefix);
+export const apiClientInstance = new ApiClient(API_BASE_URL);
 
 export const getModels = async (): Promise<GetMLModelsResponse> => {
   try {
