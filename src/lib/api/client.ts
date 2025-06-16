@@ -1,12 +1,7 @@
 import { useCallback, useState } from 'react';
 import { GetMLModelsResponse, MLModelResponse } from './models/ml-models';
 
-// API configuration
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-const API_BASE_URL = isDevelopment
-  ? 'http://121.126.210.2/api/v1'
-  : '/proxy/api/v1';
+const API_BASE_URL = '/api/v1';
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
