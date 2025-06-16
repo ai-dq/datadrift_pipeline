@@ -2,6 +2,7 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { ServicesSection } from './services-section';
 import { SettingsSection } from './settings-section';
@@ -15,7 +16,9 @@ export function AppSidebar() {
         <ServicesSection />
         <SettingsSection />
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter className="content-center justify-center items-start">
+        <SidebarTrigger />
+      </SidebarFooter>
     </Sidebar>
   );
 }

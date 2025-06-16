@@ -1,4 +1,4 @@
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppSidebar } from '@/components/app-sidebar/app-sidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { cookies } from 'next/headers';
 import './globals.css';
@@ -20,10 +20,7 @@ export default async function RootLayout({
       >
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
-          <main className="flex-1">
-            <SidebarTrigger />
-            {children}
-          </main>
+          <main className="flex-1">{children}</main>
         </SidebarProvider>
       </body>
     </html>
