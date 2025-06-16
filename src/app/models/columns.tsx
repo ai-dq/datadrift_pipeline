@@ -8,9 +8,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ColumnDef } from '@tanstack/react-table';
-import { Info, MoreHorizontal } from 'lucide-react';
+import { ArrowUpDown, Info, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Trash2 } from 'lucide-react';
 
 export type Model = {
   id: string;
@@ -67,9 +66,7 @@ const ModelActionsCell = ({ model }: { model: Model }) => {
   };
 
   const handleDeleteClick = () => {
-    // Implement actual delete logic here, possibly opening a confirmation dialog
-    console.log('Attempting to delete model:', model.id);
-    // Example: await deleteModel(model.id); router.refresh();
+    throw new Error('Delete model');
   };
 
   return (
@@ -106,11 +103,22 @@ const ModelActionsCell = ({ model }: { model: Model }) => {
 export const columns: ColumnDef<Model>[] = [
   {
     accessorKey: 'id',
-    header: 'ID',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          ID
+          <ArrowUpDown className="ml-2 size-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const id = row.getValue('id') as Model['id'];
-      return id;
+      return <div className="ml-4">{id}</div>;
     },
+    size: 80,
   },
   {
     accessorKey: 'name',
@@ -119,6 +127,7 @@ export const columns: ColumnDef<Model>[] = [
       const name = row.getValue('name') as Model['name'];
       return <div className="font-medium">{name}</div>;
     },
+    size: 200,
   },
   {
     accessorKey: 'type',
@@ -127,6 +136,7 @@ export const columns: ColumnDef<Model>[] = [
       const type = row.getValue('type') as Model['type'];
       return <div className="font-medium">{getTypeBadge(type)}</div>;
     },
+    size: 120,
   },
   {
     accessorKey: 'version',
@@ -135,6 +145,7 @@ export const columns: ColumnDef<Model>[] = [
       const version = row.getValue('version') as Model['version'];
       return <div className="font-mono text-sm">v{version}</div>;
     },
+    size: 100,
   },
   {
     accessorKey: 'updatedAt',
@@ -143,9 +154,11 @@ export const columns: ColumnDef<Model>[] = [
       const updatedAt = row.getValue('updatedAt') as Model['updatedAt'];
       return updatedAt;
     },
+    size: 150,
   },
   {
     id: 'actions',
     cell: ({ row }) => <ModelActionsCell model={row.original} />,
+    size: 80,
   },
 ];
