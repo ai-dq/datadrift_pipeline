@@ -1,5 +1,5 @@
 import { AppSidebar } from '@/components/app-sidebar/app-sidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { cookies } from 'next/headers';
 import './globals.css';
 
