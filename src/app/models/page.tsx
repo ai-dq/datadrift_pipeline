@@ -8,9 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { ApiModelResponse, getModels } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils/time';
-import { Activity, CreditCard, Users } from 'lucide-react';
+import { ColumnFiltersState, OnChangeFn } from '@tanstack/react-table';
+import { Activity, CreditCard, Search, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { columns, Model } from './columns';
 import { DataTable } from './data-table';
@@ -40,6 +42,15 @@ async function getModelsData(): Promise<Model[]> {
 
 export default function ModelsPage() {
   const [data, setData] = useState<Model[]>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  const handleColumnFiltersChange: OnChangeFn<ColumnFiltersState> = (
+    updater,
+  ) => {
+    setColumnFilters((prev) =>
+      typeof updater === 'function' ? updater(prev) : updater,
+    );
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -58,7 +69,7 @@ export default function ModelsPage() {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">Models</h1>
+        <h1 className="mb-2 text-3xl font-bold text-gray-900">Models</h1>
         <p className="text-sm text-gray-600">Models</p>
       </div>
 
@@ -88,11 +99,58 @@ export default function ModelsPage() {
       <div className="mb-8">
         <Card>
           <CardHeader>
-            <CardTitle>Model Overview</CardTitle>
-            <CardDescription>List of all models</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-semibold text-gray-900">
+                  Model Overview
+                </CardTitle>
+                <CardDescription>List of all models</CardDescription>
+              </div>
+              <div className="flex items-center">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 size-4 text-gray-400" />
+                  <Input
+                    placeholder="Search model name..."
+                    value={
+                      (columnFilters.find((f) => f.id === 'name')
+                        ?.value as string) ?? ''
+                    }
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      handleColumnFiltersChange((prev) =>
+                        value
+                          ? prev
+                              .filter((f) => f.id !== 'name')
+                              .concat([{ id: 'name', value }])
+                          : prev.filter((f) => f.id !== 'name'),
+                      );
+                    }}
+                    className="pl-10 pr-10 w-64 focus:w-80 transition-all duration-200"
+                  />
+                  {(columnFilters.find((f) => f.id === 'name')
+                    ?.value as string) && (
+                    <button
+                      onClick={() => {
+                        handleColumnFiltersChange((prev) =>
+                          prev.filter((f) => f.id !== 'name'),
+                        );
+                      }}
+                      className="absolute right-3 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <DataTable data={data} columns={columns} />
+            <DataTable
+              data={data}
+              columns={columns}
+              columnFilters={columnFilters}
+              onColumnFiltersChange={handleColumnFiltersChange}
+            />
           </CardContent>
         </Card>
       </div>
