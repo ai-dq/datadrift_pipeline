@@ -5,7 +5,9 @@ import { GetMLModelsResponse, MLModelResponse } from './models/ml-models';
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 const NEXT_PUBLIC_API_PROXY_PREFIX = '/next-api/external';
-const API_BASE_URL = isDevelopment ? 'http://121.126.210.2/api/v1' : '/';
+const API_BASE_URL = isDevelopment
+  ? 'http://121.126.210.2/api/v1'
+  : `http://api:${process.env.CORE_API_PORT}/v1`;
 const effectivePrefix = isDevelopment ? '/' : NEXT_PUBLIC_API_PROXY_PREFIX;
 
 type RequestOptions = {
