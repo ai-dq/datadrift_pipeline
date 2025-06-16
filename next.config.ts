@@ -7,12 +7,21 @@ const nextConfig: NextConfig = {
     '121.126.210.2',
   ],
   rewrites: async () => {
-    return [
-      {
-        source: '/proxy/:path*/',
-        destination: `${process.env.CORE_API_URL}/:path*`,
-      },
-    ];
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: `http://121.126.210.2:${process.env.CORE_API_PORT}/:path*`,
+        },
+      ];
+    } else {
+      return [
+        {
+          source: '/api/:path*',
+          destination: `http://localhost:${process.env.CORE_API_PORT}/:path*`,
+        },
+      ];
+    }
   },
 };
 
