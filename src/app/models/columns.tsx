@@ -142,13 +142,14 @@ const TypeFilterCell = ({ column }: { column: any }) => {
 
 const ModelNameCell = ({ model }: { model: Model }) => {
   const router = useRouter();
+  const queryParams = new URLSearchParams(model);
 
   return (
     <Button
       variant="link"
       className="font-medium"
       onClick={() => {
-        router.push(`/models/${model.id}`);
+        router.push(`/models/${model.id}?${queryParams.toString()}`);
       }}
     >
       {model.name}

@@ -12,6 +12,7 @@ import { useModel } from '@/hooks/network/models';
 import { use } from 'react';
 import { columns } from './columns';
 import { DataTable } from './data-table';
+import { Model } from '@/entities/ml-model';
 
 /**
  * Component for rendering loading skeleton
@@ -62,11 +63,15 @@ function ModelVersionPageSkeleton() {
 
 export default function ModelVersionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Model>;
 }) {
   const { id } = use(params);
   const { data: versions, loading: modelLoading } = useModel(Number(id));
+
+  const model = use(searchParams);
 
   if (modelLoading) {
     return <ModelVersionPageSkeleton />;
@@ -76,7 +81,7 @@ export default function ModelVersionPage({
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold text-gray-900">{id}</h1>
+        <h1 className="mb-2 text-3xl font-bold text-gray-900">{model.name}</h1>
         <p className="text-sm text-gray-600">ID: {id}</p>
       </div>
 

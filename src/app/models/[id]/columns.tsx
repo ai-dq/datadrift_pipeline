@@ -1,11 +1,14 @@
 import { ModelVersion } from '@/entities/ml-model';
 import { ColumnDef } from '@tanstack/react-table';
 
+const SelectCell = ({ row }: { row: any }) => {
+  return <div className="font-mono text-sm">${row.original.id}</div>;
+};
+
 export const columns: ColumnDef<ModelVersion>[] = [
   {
-    accessorKey: 'id',
-    header: 'ID',
-    size: 100,
+    id: 'actions',
+    cell: ({ row }) => <SelectCell row={row} />,
   },
   {
     accessorKey: 'version',
@@ -19,5 +22,23 @@ export const columns: ColumnDef<ModelVersion>[] = [
   {
     accessorKey: 'trainedAt',
     header: 'Trained At',
+  },
+  {
+    accessorKey: 'epochs',
+  },
+  {
+    accessorKey: 'time',
+  },
+  {
+    accessorKey: 'precision',
+  },
+  {
+    accessorKey: 'recall',
+  },
+  {
+    accessorKey: 'map50',
+  },
+  {
+    accessorKey: 'map95',
   },
 ];
