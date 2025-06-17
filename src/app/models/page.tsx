@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Model } from '@/entities/ml-model';
 import { useModels } from '@/hooks/network/models';
 import { ColumnFiltersState, OnChangeFn } from '@tanstack/react-table';
 import {
@@ -24,6 +25,7 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { columns } from './columns';
 import { DataTable } from './data-table';
+import { useRouter } from 'next/navigation';
 
 /**
  * Custom hook for managing column filters
@@ -141,6 +143,8 @@ function ModelsPageError({
 }
 
 export default function ModelsPage() {
+  const router = useRouter();
+
   const { data, loading, error, refetch } = useModels();
   const {
     columnFilters,
@@ -165,6 +169,14 @@ export default function ModelsPage() {
       updateSearchFilter(event.target.value);
     },
     [updateSearchFilter],
+  );
+
+  // Handle row click
+  const handleRowClick = useCallback(
+    (rowData: Model) => {
+      router.push(`/models/${rowData.id}`);
+    },
+    [data],
   );
 
   if (loading) {
@@ -216,9 +228,7 @@ export default function ModelsPage() {
                 <CardTitle className="text-xl font-semibold text-gray-900">
                   Model Overview
                 </CardTitle>
-                <CardDescription>
-                  List of all models ({data.length} total)
-                </CardDescription>
+                <CardDescription>List of all models</CardDescription>
               </div>
               <div className="flex items-center">
                 <div className="relative flex items-center">
@@ -249,6 +259,7 @@ export default function ModelsPage() {
               columns={columns}
               columnFilters={columnFilters}
               onColumnFiltersChange={handleColumnFiltersChange}
+              onRowClick={handleRowClick}
             />
           </CardContent>
         </Card>

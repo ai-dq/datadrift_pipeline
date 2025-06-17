@@ -140,23 +140,6 @@ const TypeFilterCell = ({ column }: { column: any }) => {
   );
 };
 
-const ModelNameCell = ({ model }: { model: Model }) => {
-  const router = useRouter();
-  const queryParams = new URLSearchParams(model);
-
-  return (
-    <Button
-      variant="link"
-      className="font-medium"
-      onClick={() => {
-        router.push(`/models/${model.id}?${queryParams.toString()}`);
-      }}
-    >
-      {model.name}
-    </Button>
-  );
-};
-
 // Component to handle actions, including router usage
 const ModelActionsCell = ({ model }: { model: Model }) => {
   const router = useRouter();
@@ -223,7 +206,7 @@ export const columns: ColumnDef<Model>[] = [
   {
     accessorKey: 'name',
     header: 'Model Name',
-    cell: ({ row }) => <ModelNameCell model={row.original} />,
+    cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
     size: 250,
   },
   {

@@ -8,11 +8,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Model } from '@/entities/ml-model';
 import { useModel } from '@/hooks/network/models';
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import { columns } from './columns';
 import { DataTable } from './data-table';
-import { Model } from '@/entities/ml-model';
 
 /**
  * Component for rendering loading skeleton
@@ -68,10 +68,21 @@ export default function ModelVersionPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Model>;
 }) {
+  const model = use(searchParams);
   const { id } = use(params);
   const { data: versions, loading: modelLoading } = useModel(Number(id));
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
+    null,
+  );
 
-  const model = use(searchParams);
+  const handleVersionSelect = (versionId: string) => {
+    setSelectedVersionId(versionId);
+  };
+
+  useEffect(() => {
+    const version = versions.find((v) => v.id.toString() === selectedVersionId);
+    setSelectedVersionId(version?.id || null);
+  }, [selectedVersionId]);
 
   if (modelLoading) {
     return <ModelVersionPageSkeleton />;
@@ -82,7 +93,17 @@ export default function ModelVersionPage({
       {/* Header */}
       <div className="mb-8">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">{model.name}</h1>
-        <p className="text-sm text-gray-600">ID: {id}</p>
+        <div className="flex items-center gap-4 text-sm text-gray-600">
+          {selectedVersionId && versions && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md">
+              Selected: v
+              {
+                versions.find((v) => v.id.toString() === selectedVersionId)
+                  ?.version
+              }
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Model Versions Table */}
@@ -93,11 +114,16 @@ export default function ModelVersionPage({
               <CardTitle className="text-xl font-semibold text-gray-900">
                 Model Versions
               </CardTitle>
-              <CardDescription>Versions of the model</CardDescription>
+              <CardDescription>
+                Select a version to view details or deploy
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <DataTable data={versions} columns={columns} />
+            <DataTable
+              data={versions}
+              columns={columns(model, selectedVersionId, handleVersionSelect)}
+            />
           </CardContent>
         </Card>
       </div>
