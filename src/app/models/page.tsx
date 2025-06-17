@@ -11,8 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ApiModelResponse, getModels } from '@/lib/api';
-import { formatRelativeTime } from '@/lib/utils/time';
+import { useModels } from '@/hooks/network/models';
 import { ColumnFiltersState, OnChangeFn } from '@tanstack/react-table';
 import {
   Activity,
@@ -22,54 +21,9 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { columns, Model } from './columns';
+import { useCallback, useMemo, useState } from 'react';
+import { columns } from './columns';
 import { DataTable } from './data-table';
-
-/**
- * Transform API model to UI Model
- */
-function transformResponseToEntity(response: ApiModelResponse): Model {
-  return {
-    id: response.id.toString(),
-    name: response.name,
-    type: response.type,
-    version: response.version,
-    updatedAt: formatRelativeTime(response.updated_at),
-  };
-}
-
-/**
- * Custom hook for managing models data
- */
-function useModelsData() {
-  const [data, setData] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchModels = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getModels();
-      const modelsData = response.items.map(transformResponseToEntity);
-      setData(modelsData);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to fetch models';
-      setError(errorMessage);
-      console.error('Failed to fetch models:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
-
-  return { data, loading, error, refetch: fetchModels };
-}
 
 /**
  * Custom hook for managing column filters
@@ -187,7 +141,7 @@ function ModelsPageError({
 }
 
 export default function ModelsPage() {
-  const { data, loading, error, refetch } = useModelsData();
+  const { data, loading, error, refetch } = useModels();
   const {
     columnFilters,
     handleColumnFiltersChange,

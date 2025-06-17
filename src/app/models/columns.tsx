@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Model } from '@/entities/ml-model';
 import { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowUpDown,
@@ -19,15 +20,6 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-export type Model = {
-  id: string;
-  name: string;
-  type: 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
-  version: string;
-  updatedAt: string;
-  description?: string;
-};
 
 const MODEL_TYPES = [
   { value: 'layout', label: 'Layout Detection' },
@@ -148,6 +140,22 @@ const TypeFilterCell = ({ column }: { column: any }) => {
   );
 };
 
+const ModelNameCell = ({ model }: { model: Model }) => {
+  const router = useRouter();
+
+  return (
+    <Button
+      variant="link"
+      className="font-medium"
+      onClick={() => {
+        router.push(`/models/${model.id}`);
+      }}
+    >
+      {model.name}
+    </Button>
+  );
+};
+
 // Component to handle actions, including router usage
 const ModelActionsCell = ({ model }: { model: Model }) => {
   const router = useRouter();
@@ -214,20 +222,7 @@ export const columns: ColumnDef<Model>[] = [
   {
     accessorKey: 'name',
     header: 'Model Name',
-    cell: ({ row }) => {
-      const name = row.getValue('name') as Model['name'];
-      return (
-        <Button
-          variant="link"
-          className="font-medium"
-          onClick={() => {
-            // console.log('sdfkj');
-          }}
-        >
-          {name}
-        </Button>
-      );
-    },
+    cell: ({ row }) => <ModelNameCell model={row.original} />,
     size: 250,
   },
   {
@@ -246,19 +241,15 @@ export const columns: ColumnDef<Model>[] = [
   {
     accessorKey: 'version',
     header: 'Version',
-    cell: ({ row }) => {
-      const version = row.getValue('version') as Model['version'];
-      return <div className="font-mono text-sm">v{version}</div>;
-    },
+    cell: ({ row }) => (
+      <div className="font-mono text-sm">v{row.getValue('version')}</div>
+    ),
     size: 100,
   },
   {
     accessorKey: 'updatedAt',
     header: 'Last Update',
-    cell: ({ row }) => {
-      const updatedAt = row.getValue('updatedAt') as Model['updatedAt'];
-      return updatedAt;
-    },
+    cell: ({ row }) => row.getValue('updatedAt'),
     size: 100,
   },
   {
