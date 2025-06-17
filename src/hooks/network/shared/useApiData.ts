@@ -90,7 +90,6 @@ export function useApiData<TResponse, TEntity>({
     }
   }, [fetchFn, transformFn, errorMessage]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (autoFetch) {
       fetchData();
@@ -102,10 +101,9 @@ export function useApiData<TResponse, TEntity>({
         abortControllerRef.current.abort();
       }
     };
-  }, [autoFetch, fetchData, ...deps]);
+  }, [autoFetch, fetchData, deps]);
 
   // Cleanup on unmount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -199,7 +197,6 @@ export function useApiItem<TResponse, TEntity>({
     }
   }, [fetchFn, transformFn, errorMessage]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (autoFetch) {
       fetchData();
@@ -211,10 +208,9 @@ export function useApiItem<TResponse, TEntity>({
         abortControllerRef.current.abort();
       }
     };
-  }, [autoFetch, fetchData, ...deps]);
+  }, [autoFetch, fetchData, deps]);
 
   // Cleanup on unmount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {

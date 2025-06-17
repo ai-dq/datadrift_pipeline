@@ -9,8 +9,9 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useModel } from '@/hooks/network/models';
-import { DataTable } from '../data-table';
+import { use } from 'react';
 import { columns } from './columns';
+import { DataTable } from './data-table';
 
 /**
  * Component for rendering loading skeleton
@@ -62,9 +63,9 @@ function ModelVersionPageSkeleton() {
 export default function ModelVersionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = use(params);
   const { data: versions, loading: modelLoading } = useModel(Number(id));
 
   if (modelLoading) {
