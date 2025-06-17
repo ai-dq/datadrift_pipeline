@@ -125,11 +125,8 @@ const TypeFilterCell = ({ column }: { column: any }) => {
                   checked={selectedTypes.includes(type.value)}
                   onCheckedChange={() => handleTypeToggle(type.value)}
                 />
-                <label
-                  htmlFor={type.value}
-                  className="text-sm font-normal cursor-pointer flex-1"
-                >
-                  {type.label}
+                <label htmlFor={type.value} className="cursor-pointer flex-1">
+                  {getTypeBadge(type.value as Model['type'])}
                 </label>
               </div>
             ))}
