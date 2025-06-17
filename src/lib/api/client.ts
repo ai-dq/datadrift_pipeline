@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { getAccessTokenByRefresh } from './endpoints/jwt';
+
+const API_BASE_URL = '/api/v1';
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -190,29 +191,7 @@ export class ApiError extends Error {
   }
 }
 
-// 환경 변수에서 API URL 가져오기, 없으면 기본값 사용
-const CREATE_API_BASE_URL = (path: string) => {
-  if (typeof window !== 'undefined') {
-    // 클라이언트 사이드에서는 개발 환경일 때 프록시 사용
-    const isDev = process.env.NODE_ENV === 'development';
-    
-    if (isDev) {
-      // 개발 환경에서는 /next-api/external 프록시 경로 사용
-      return `/next-api/external${path}`;
-    }
-    
-    // 프로덕션 환경에서는 직접 외부 서버 호출
-    const baseUrl = process.env.NEXT_PUBLIC_LABELSTUDIO_URL || 'http://121.126.210.2/labelstudio';
-    return `${baseUrl}${path}`;
-  }
-  // 서버 사이드에서는 일반 환경 변수 사용
-  const baseUrl = process.env.NEXT_PUBLIC_LABELSTUDIO_URL || 'http://121.126.210.2/labelstudio';
-  return `${baseUrl}${path}`;
-};
-
-export const APIClient = {
-  labelstudio: new ApiClient('http://121.126.210.2/labelstudio/api'),
-};
+export const apiClientInstance = new ApiClient(API_BASE_URL);
 
 // React Hook for API calls with loading state
 type UseApiOptions<T> = {
