@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { GetMLModelsResponse, MLModelResponse } from './models/ml-models';
 
 const API_BASE_URL = '/api/v1';
 
@@ -139,37 +138,6 @@ export class ApiError extends Error {
 }
 
 export const apiClientInstance = new ApiClient(API_BASE_URL);
-
-export const getModels = async (): Promise<GetMLModelsResponse> => {
-  try {
-    const response =
-      await apiClientInstance.get<GetMLModelsResponse>('/models');
-    return response;
-  } catch (error) {
-    console.error(`Failed for getModels:`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(0, 'Failed to get models', String(error));
-  }
-};
-
-export const getModelById = async (
-  modelId: number,
-): Promise<MLModelResponse> => {
-  try {
-    const response = await apiClientInstance.get<MLModelResponse>(
-      `/models/${modelId}`,
-    );
-    return response;
-  } catch (error) {
-    console.error(`Failed for getModelById (id: ${modelId}):`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      0,
-      `Failed to get model by id: ${modelId}. Details: ${String(error)}`,
-      String(error),
-    );
-  }
-};
 
 // React Hook for API calls with loading state
 type UseApiOptions<T> = {
