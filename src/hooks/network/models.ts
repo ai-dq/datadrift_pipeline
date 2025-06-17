@@ -13,8 +13,10 @@ export function useModels(): {
   error: string | null;
   refetch: () => Promise<void>;
 } {
+  const fetchFn = useCallback(() => getModels(), []);
+
   return useApiData<MLModelResponse, Model>({
-    fetchFn: getModels,
+    fetchFn,
     transformFn: MLModelResponse.toEntity,
     errorMessage: 'Failed to fetch models',
   });
@@ -35,6 +37,5 @@ export function useModel(modelID: number): {
     fetchFn,
     transformFn: MLModelVersionResponse.toEntity,
     errorMessage: `Failed to fetch model with ID: ${modelID}`,
-    deps: [modelID],
   });
 }

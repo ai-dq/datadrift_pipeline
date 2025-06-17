@@ -11,7 +11,6 @@ export function useApiData<TResponse, TEntity>({
   errorMessage = 'Failed to fetch data',
   initialData,
   autoFetch = true,
-  deps = [],
 }: {
   /**
    * Function that fetches data from the API
@@ -33,10 +32,6 @@ export function useApiData<TResponse, TEntity>({
    * Whether to automatically fetch data on mount
    */
   autoFetch?: boolean;
-  /**
-   * Dependencies that should trigger a refetch
-   */
-  deps?: unknown[];
 }): {
   data: TEntity[];
   loading: boolean;
@@ -101,7 +96,7 @@ export function useApiData<TResponse, TEntity>({
         abortControllerRef.current.abort();
       }
     };
-  }, [autoFetch, fetchData, deps]);
+  }, [autoFetch, fetchData]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -125,7 +120,6 @@ export function useApiItem<TResponse, TEntity>({
   transformFn,
   errorMessage = 'Failed to fetch item',
   autoFetch = true,
-  deps = [],
 }: {
   /**
    * Function that fetches a single item from the API
@@ -143,10 +137,6 @@ export function useApiItem<TResponse, TEntity>({
    * Whether to automatically fetch data on mount
    */
   autoFetch?: boolean;
-  /**
-   * Dependencies that should trigger a refetch
-   */
-  deps?: unknown[];
 }): {
   data: TEntity | null;
   loading: boolean;
@@ -208,7 +198,7 @@ export function useApiItem<TResponse, TEntity>({
         abortControllerRef.current.abort();
       }
     };
-  }, [autoFetch, fetchData, deps]);
+  }, [autoFetch, fetchData]);
 
   // Cleanup on unmount
   useEffect(() => {
