@@ -175,8 +175,9 @@ export default function ModelsPage() {
   const handleRowClick = useCallback(
     (rowData: Model) => {
       const model = data.find((model) => model.id === rowData.id);
+      const queryParams = new URLSearchParams(model);
       if (model) {
-        router.push(`/models/${rowData.id}?${model}`);
+        router.push(`/models/${rowData.id}?${queryParams.toString()}`);
       }
     },
     [data],
