@@ -18,6 +18,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import React from 'react';
 import { useState } from 'react';
 
 interface DataTableProps<TData, TValue> {

@@ -2,22 +2,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ModelVersion } from '@/entities/ml-model';
 import { cn } from '@/utils/tailwind.util';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, Row } from '@tanstack/react-table';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 
-const SelectCell = ({
+const SelectCell = <TData extends ModelVersion>({
   row,
   isSelected,
   onSelect,
   className,
 }: {
-  row: any;
+  row: Row<TData>;
   isSelected: boolean;
   onSelect: (versionId: string) => void;
   className?: string;
 }) => {
-  const version = row.original as ModelVersion;
+  const version = row.original;
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -34,6 +34,7 @@ const SelectCell = ({
         onClick={() => onSelect(version.id.toString())}
         onPointerEnter={() => setIsHovered(true)}
         onPointerLeave={() => setIsHovered(false)}
+        aria-label="Select version button"
       >
         {isSelected ? (
           <Badge
@@ -56,14 +57,17 @@ const SelectCell = ({
   );
 };
 
-export const columns = (
+export const columns = <TData extends ModelVersion>(
   selectedVersionId: string | null,
   onVersionSelect: (versionId: string) => void,
-): ColumnDef<ModelVersion>[] => [
+): ColumnDef<TData>[] => [
   {
     id: 'select',
     header: ({}) => (
-      <div className="flex items-center justify-center">
+      <div
+        className="flex items-center justify-center"
+        aria-label="Select version header"
+      >
         <Check className="w-4 h-4" />
       </div>
     ),
@@ -73,6 +77,7 @@ export const columns = (
         isSelected={selectedVersionId === row.original.id.toString()}
         onSelect={onVersionSelect}
         className="flex justify-center items-center"
+        aria-label="Select version cell"
       />
     ),
     minSize: 50,
@@ -82,7 +87,7 @@ export const columns = (
     accessorKey: 'version',
     header: 'Version',
     cell: ({ row }) => {
-      const version = row.getValue('version') as ModelVersion['version'];
+      const version = row.original.version;
       return <div className="font-mono text-sm">v{version}</div>;
     },
     minSize: 150,

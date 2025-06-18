@@ -1,18 +1,13 @@
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Model } from '@/entities/ml-model';
 import { useModel } from '@/hooks/network/models';
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { columns } from './columns';
 import { DataTable } from './data-table';
+import React from 'react';
 
 /**
  * Component for rendering loading skeleton
@@ -70,26 +65,78 @@ export default function ModelVersionPage({
 }) {
   const model = use(searchParams);
   const { id } = use(params);
-  const { data: versions, loading: modelLoading } = useModel(Number(id));
+  const { data: rawVersions, loading: modelLoading } = useModel(Number(id));
+
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
     null,
   );
 
-  const handleVersionSelect = (versionId: string) => {
+  // Create a stable string of version IDs to use as a dependency for memoizing `versions`.
+  // This ensures `versions` reference only changes if its content (IDs) changes.
+  const stableVersionIds = useMemo(() => {
+    if (!rawVersions || rawVersions.length === 0) return '';
+    return rawVersions.map((v: { id: any }) => v.id).join(','); // Assuming each version object has an 'id' property
+  }, [rawVersions]);
+
+  // Memoized `versions` array. Its reference is stable if `stableVersionIds` is unchanged.
+  const versions = useMemo(() => {
+    if (!rawVersions) return []; // Or a more specific empty state if needed
+    return rawVersions;
+  }, [stableVersionIds]);
+
+  const handleVersionSelect = useCallback((versionId: string) => {
     setSelectedVersionId(versionId);
-  };
+    console.log(`Version selected: ${versionId}`);
+  }, []);
 
   useEffect(() => {
-    const selected_version = versions.find(
+    console.log(
+      '[Effect] Running. Deps - modelLoading:',
+      modelLoading,
+      'versions#:',
+      versions?.length,
+      'model.v:',
+      model?.version,
+      'selectedId:',
+      selectedVersionId,
+    );
+    // If data is loading or versions array is not yet populated, do nothing.
+    if (modelLoading || !versions || versions.length === 0) {
+      console.log('[Effect] Bailing out: loading or no versions.');
+      return;
+    }
+
+    const selectedVersion = versions.find(
       (v) => v.version.toString() === model.version,
     );
-    console.debug(`Model version selected: ${selected_version?.version}`);
-    setSelectedVersionId(selected_version?.id || null);
-  }, [versions, selectedVersionId]);
+    const newSelectedId = selectedVersion?.id || null;
+    console.log('[Effect] Calculated newSelectedId:', newSelectedId);
+
+    // Only set state if the newly determined ID is different from the current one.
+    if (newSelectedId !== selectedVersionId) {
+      console.log(
+        `[Effect] Updating selectedVersionId from ${selectedVersionId} to ${newSelectedId}. Model version: ${model.version}, Found version obj: ${selectedVersion?.version}`,
+      );
+      setSelectedVersionId(newSelectedId);
+    } else {
+      console.log(
+        '[Effect] No update: newSelectedId is same as selectedVersionId.',
+      );
+    }
+  }, [versions, model.version, selectedVersionId, modelLoading]);
 
   if (modelLoading) {
     return <ModelVersionPageSkeleton />;
   }
+
+  const MemoizedDataTable = React.memo(() => {
+    return (
+      <DataTable
+        data={versions}
+        columns={columns(selectedVersionId, handleVersionSelect)}
+      />
+    );
+  });
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -120,10 +167,7 @@ export default function ModelVersionPage({
             </div>
           </CardHeader>
           <CardContent>
-            <DataTable
-              data={versions}
-              columns={columns(selectedVersionId, handleVersionSelect)}
-            />
+            <MemoizedDataTable />
           </CardContent>
         </Card>
       </div>

@@ -175,9 +175,18 @@ export default function ModelsPage() {
   const handleRowClick = useCallback(
     (rowData: Model) => {
       const model = data.find((model) => model.id === rowData.id);
-      const queryParams = new URLSearchParams(model);
+
       if (model) {
-        router.push(`/models/${rowData.id}?${queryParams.toString()}`);
+        const { id, ...rest } = model;
+        const stringified = Object.entries(rest).reduce(
+          (acc, [k, v]) => {
+            acc[k] = String(v);
+            return acc;
+          },
+          {} as Record<string, string>,
+        );
+        const queryParams = new URLSearchParams(stringified);
+        router.push(`/models/${id}?${queryParams.toString()}`);
       }
     },
     [data],
