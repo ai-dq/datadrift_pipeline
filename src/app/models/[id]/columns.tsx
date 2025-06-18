@@ -40,7 +40,11 @@ const SelectCell = memo(
           isSelected
             ? 'h-auto w-auto p-1 rounded-md'
             : 'h-8 w-8 p-0 rounded-full cursor-pointer',
-          isSelected ? '' : isHovered ? 'bg-gray-100 opacity-100' : 'opacity-0',
+          isSelected
+            ? ''
+            : isHovered
+              ? 'bg-gray-100 opacity-100'
+              : 'bg-gray-50 opacity-50',
         ),
       [isSelected, isHovered],
     );
