@@ -80,9 +80,12 @@ export default function ModelVersionPage({
   };
 
   useEffect(() => {
-    const version = versions.find((v) => v.id.toString() === selectedVersionId);
-    setSelectedVersionId(version?.id || null);
-  }, [selectedVersionId]);
+    const selected_version = versions.find(
+      (v) => v.version.toString() === model.version,
+    );
+    console.debug(`Model version selected: ${selected_version?.version}`);
+    setSelectedVersionId(selected_version?.id || null);
+  }, [versions, selectedVersionId]);
 
   if (modelLoading) {
     return <ModelVersionPageSkeleton />;
@@ -114,15 +117,12 @@ export default function ModelVersionPage({
               <CardTitle className="text-xl font-semibold text-gray-900">
                 Model Versions
               </CardTitle>
-              <CardDescription>
-                Select a version to view details or deploy
-              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             <DataTable
               data={versions}
-              columns={columns(model, selectedVersionId, handleVersionSelect)}
+              columns={columns(selectedVersionId, handleVersionSelect)}
             />
           </CardContent>
         </Card>

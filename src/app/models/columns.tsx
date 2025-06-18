@@ -198,13 +198,13 @@ export const columns: ColumnDef<Model>[] = [
       const id = row.getValue('id') as Model['id'];
       return <div className="ml-4">{id}</div>;
     },
-    size: 50,
+    maxSize: 50,
   },
   {
     accessorKey: 'name',
     header: 'Model Name',
     cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
-    size: 250,
+    maxSize: 250,
   },
   {
     accessorKey: 'type',
@@ -217,7 +217,7 @@ export const columns: ColumnDef<Model>[] = [
       if (!value || value.length === 0) return true;
       return value.includes(row.getValue(id));
     },
-    size: 100,
+    maxSize: 100,
   },
   {
     accessorKey: 'version',
@@ -225,17 +225,17 @@ export const columns: ColumnDef<Model>[] = [
     cell: ({ row }) => (
       <div className="font-mono text-sm">v{row.getValue('version')}</div>
     ),
-    size: 100,
+    maxSize: 100,
   },
   {
     accessorKey: 'updatedAt',
     header: 'Last Update',
     cell: ({ row }) => row.getValue('updatedAt'),
-    size: 100,
+    maxSize: 100,
   },
   {
     id: 'actions',
     cell: ({ row }) => <ModelActionsCell model={row.original} />,
-    size: 40,
+    maxSize: 40,
   },
 ];

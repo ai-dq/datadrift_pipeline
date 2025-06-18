@@ -68,8 +68,10 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
+                      className="py-3"
                       style={{
-                        minWidth: header.column.columnDef.size,
+                        minWidth: header.column.columnDef.minSize,
+                        maxWidth: header.column.columnDef.maxSize,
                       }}
                     >
                       {header.isPlaceholder
@@ -97,7 +99,8 @@ export function DataTable<TData, TValue>({
                     <TableCell
                       key={cell.id}
                       style={{
-                        minWidth: cell.column.columnDef.size,
+                        minWidth: cell.column.columnDef.minSize,
+                        maxWidth: cell.column.columnDef.maxSize,
                       }}
                     >
                       {flexRender(
@@ -110,10 +113,7 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="py-2">
                   No model found.
                 </TableCell>
               </TableRow>

@@ -1,60 +1,82 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Model, ModelVersion } from '@/entities/ml-model';
+import { ModelVersion } from '@/entities/ml-model';
 import { cn } from '@/utils/tailwind.util';
 import { ColumnDef } from '@tanstack/react-table';
 import { Check } from 'lucide-react';
+import { useState } from 'react';
 
 const SelectCell = ({
   row,
-  model,
   isSelected,
   onSelect,
+  className,
 }: {
   row: any;
-  model: Model;
   isSelected: boolean;
   onSelect: (versionId: string) => void;
+  className?: string;
 }) => {
   const version = row.original as ModelVersion;
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <Button
-      variant={isSelected ? 'default' : 'outline'}
-      size="sm"
-      className={cn(
-        'h-8 w-8 p-0 rounded-full transition-all',
-        isSelected
-          ? 'bg-blue-600 hover:bg-blue-700 text-white'
-          : 'hover:bg-gray-100',
-      )}
-      onClick={() => onSelect(version.id.toString())}
-    >
-      {isSelected ? (
-        <Check className="h-4 w-4" />
-      ) : (
-        <div className="h-2 w-2 rounded-full bg-gray-400" />
-      )}
-    </Button>
+    <div className={className}>
+      <Button
+        variant="ghost"
+        className={cn(
+          'transition-all duration-300 border-none outline-none focus:outline-none hover:scale-100 active:scale-100',
+          isSelected
+            ? 'h-auto w-auto p-1 rounded-md'
+            : 'h-8 w-8 p-0 rounded-full cursor-pointer',
+          isSelected ? '' : isHovered ? 'bg-gray-100 opacity-100' : 'opacity-0',
+        )}
+        onClick={() => onSelect(version.id.toString())}
+        onPointerEnter={() => setIsHovered(true)}
+        onPointerLeave={() => setIsHovered(false)}
+      >
+        {isSelected ? (
+          <Badge
+            variant="secondary"
+            className="bg-teal-50 text-green-800 text-xs px-2 py-1"
+          >
+            <Check className="h-3 w-3" />
+            Current
+          </Badge>
+        ) : (
+          <div
+            className={cn(
+              'rounded-full bg-gray-400 transition-all duration-300 ease-in-out',
+              isHovered ? 'h-3 w-3' : 'h-2 w-2',
+            )}
+          />
+        )}
+      </Button>
+    </div>
   );
 };
 
 export const columns = (
-  model: Model,
   selectedVersionId: string | null,
   onVersionSelect: (versionId: string) => void,
 ): ColumnDef<ModelVersion>[] => [
   {
     id: 'select',
-    header: 'Select',
+    header: ({}) => (
+      <div className="flex items-center justify-center">
+        <Check className="w-4 h-4" />
+      </div>
+    ),
     cell: ({ row }) => (
       <SelectCell
         row={row}
-        model={model}
         isSelected={selectedVersionId === row.original.id.toString()}
         onSelect={onVersionSelect}
+        className="flex justify-center items-center"
       />
     ),
-    size: 80,
+    minSize: 50,
+    maxSize: 60,
   },
   {
     accessorKey: 'version',
@@ -63,40 +85,40 @@ export const columns = (
       const version = row.getValue('version') as ModelVersion['version'];
       return <div className="font-mono text-sm">v{version}</div>;
     },
-    size: 100,
-  },
-  {
-    accessorKey: 'trainedAt',
-    header: 'Trained At',
+    minSize: 150,
   },
   {
     accessorKey: 'epochs',
     header: 'Epochs',
-    size: 50,
+    minSize: 50,
   },
   {
     accessorKey: 'time',
     header: 'Training Time',
-    size: 50,
+    minSize: 50,
   },
   {
     accessorKey: 'precision',
     header: 'Precision',
-    size: 60,
+    minSize: 60,
   },
   {
     accessorKey: 'recall',
     header: 'Recall',
-    size: 60,
+    minSize: 60,
   },
   {
     accessorKey: 'map50',
     header: 'mAP50',
-    size: 60,
+    minSize: 60,
   },
   {
     accessorKey: 'map95',
     header: 'mAP50-95',
-    size: 60,
+    minSize: 60,
+  },
+  {
+    accessorKey: 'trainedAt',
+    header: 'Trained At',
   },
 ];
