@@ -2,11 +2,35 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Model } from '@/entities/ml-model';
-import { useModel } from '@/hooks/network/models';
+import { useModel, useModelVersions } from '@/hooks/network/models';
 import { memo, use, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { columns } from './columns';
 import { DataTable } from './data-table';
+import { selectModelVersion } from '@/lib/api/endpoints';
+import { ModelVersion } from '@/entities/ml-model';
+import { Badge } from '@/components/ui/badge';
+
+// Define MemoizedDataTable at the top level for effective memoization
+const MemoizedDataTable = memo(
+  ({
+    versions,
+    selectedVersion,
+    handleVersionSelect,
+  }: {
+    versions: ModelVersion[];
+    selectedVersion: string | null;
+    handleVersionSelect: (version: string) => Promise<void>;
+  }) => {
+    return (
+      <DataTable
+        data={versions}
+        columns={columns(selectedVersion, handleVersionSelect)}
+      />
+    );
+  },
+);
+MemoizedDataTable.displayName = 'MemoizedDataTable';
 
 /**
  * Component for rendering loading skeleton
@@ -57,96 +81,68 @@ function ModelVersionPageSkeleton() {
 
 export default function ModelVersionPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Model>;
 }) {
-  const model = use(searchParams);
   const { id } = use(params);
-  const { data: rawVersions, loading: modelLoading } = useModel(Number(id));
+  const modelId = Number(id);
+  const router = useRouter();
 
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
-    null,
-  );
+  const { data: model, loading: modelLoading } = useModel(modelId);
+  const { data: rawVersions, loading: versionsLoading } =
+    useModelVersions(modelId);
 
-  // Memoized `versions` array
-  const versions = useMemo(() => {
-    if (!rawVersions) return [];
-    return rawVersions;
-  }, [rawVersions]);
-
-  const handleVersionSelect = useCallback((versionId: string) => {
-    setSelectedVersionId(versionId);
-    console.log(`Version selected: ${versionId}`);
-  }, []);
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log(
-      '[Effect] Running. Deps - modelLoading:',
-      modelLoading,
-      'versions#:',
-      versions?.length,
-      'model.v:',
-      model?.version,
-      'selectedId:',
-      selectedVersionId,
-    );
-    // If data is loading or versions array is not yet populated, do nothing.
-    if (modelLoading || !versions || versions.length === 0) {
-      console.log('[Effect] Bailing out: loading or no versions.');
-      return;
+    if (model?.version) {
+      setSelectedVersion(model.version);
     }
+  }, [model?.version]);
 
-    const selectedVersion = versions.find(
-      (v) => v.version.toString() === model.version,
-    );
-    const newSelectedId = selectedVersion?.id || null;
-    console.log('[Effect] Calculated newSelectedId:', newSelectedId);
+  const versions = useMemo(() => {
+    if (!rawVersions) return [];
 
-    // Only set state if the newly determined ID is different from the current one.
-    if (newSelectedId !== selectedVersionId) {
-      console.log(
-        `[Effect] Updating selectedVersionId from ${selectedVersionId} to ${newSelectedId}. Model version: ${model.version}, Found version obj: ${selectedVersion?.version}`,
-      );
-      setSelectedVersionId(newSelectedId);
-    } else {
-      console.log(
-        '[Effect] No update: newSelectedId is same as selectedVersionId.',
-      );
-    }
-  }, [versions, model.version, selectedVersionId, modelLoading]);
+    return rawVersions.map((version: ModelVersion) => ({
+      ...version,
+      isSelected: version.version === selectedVersion,
+    }));
+  }, [rawVersions, selectedVersion]);
 
-  if (modelLoading) {
+  const handleVersionSelect = useCallback(
+    async (version: string) => {
+      try {
+        await selectModelVersion(modelId, version);
+        setSelectedVersion(version);
+        router.refresh();
+      } catch (error) {
+        console.error('Failed to select model version:', error);
+      }
+    },
+    [modelId, router],
+  );
+
+  if (modelLoading || versionsLoading) {
     return <ModelVersionPageSkeleton />;
   }
 
-  const MemoizedDataTable = memo(() => {
+  if (!model) {
     return (
-      <DataTable
-        data={versions}
-        columns={columns(selectedVersionId, handleVersionSelect)}
-      />
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-red-600">Error</h1>
+        <p className="text-gray-500">Model not found.</p>
+      </div>
     );
-  });
-  MemoizedDataTable.displayName = 'MemoizedDataTable';
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold text-gray-900">{model.name}</h1>
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          {selectedVersionId && versions && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md">
-              Selected: v
-              {
-                versions.find((v) => v.id.toString() === selectedVersionId)
-                  ?.version
-              }
-            </span>
-          )}
-        </div>
+      <div className="flex flex-row justify-items-start items-baseline gap-2 mb-8">
+        <h1 className="text-3xl font-bold">{model.name}</h1>
+        <Badge variant="secondary" className="font-mono text-xs">
+          v{selectedVersion}
+        </Badge>
       </div>
 
       {/* Model Versions Table */}
@@ -154,13 +150,18 @@ export default function ModelVersionPage({
         <Card>
           <CardHeader>
             <div>
-              <CardTitle className="text-xl font-semibold text-gray-900">
-                Model Versions
-              </CardTitle>
+              <CardTitle>Model Versions</CardTitle>
+              <p className="text-sm text-gray-500">
+                Total {versions.length} versions
+              </p>
             </div>
           </CardHeader>
           <CardContent>
-            <MemoizedDataTable />
+            <MemoizedDataTable
+              versions={versions}
+              selectedVersion={selectedVersion}
+              handleVersionSelect={handleVersionSelect}
+            />
           </CardContent>
         </Card>
       </div>

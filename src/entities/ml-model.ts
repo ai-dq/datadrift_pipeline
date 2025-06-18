@@ -4,11 +4,10 @@ export type Model = {
   type: 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
   version: string;
   updatedAt: string;
-  description?: string;
+  description: string | null;
 };
 
 export type ModelVersion = {
-  id: string;
   version: string;
   trainedAt: string;
 };

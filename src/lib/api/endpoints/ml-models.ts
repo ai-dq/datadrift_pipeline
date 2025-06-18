@@ -1,5 +1,9 @@
 import apiClientInstance, { ApiError } from '../client';
-import { MLModelPageResponse, MLModelVersionPageResponse } from '../types';
+import {
+  MLModelPageResponse,
+  MLModelResponse,
+  MLModelVersionPageResponse,
+} from '../types';
 
 export const getModels = async (): Promise<MLModelPageResponse> => {
   try {
@@ -15,9 +19,9 @@ export const getModels = async (): Promise<MLModelPageResponse> => {
 
 export const getModelById = async (
   modelId: number,
-): Promise<MLModelVersionPageResponse> => {
+): Promise<MLModelResponse> => {
   try {
-    const response = await apiClientInstance.get<MLModelVersionPageResponse>(
+    const response = await apiClientInstance.get<MLModelResponse>(
       `/models/${modelId}`,
     );
     return response;
@@ -27,6 +31,46 @@ export const getModelById = async (
     throw new ApiError(
       0,
       `Failed to get model by id: ${modelId}. Details: ${String(error)}`,
+    );
+  }
+};
+
+export const getModelVersions = async (
+  modelId: number,
+): Promise<MLModelVersionPageResponse> => {
+  try {
+    const response = await apiClientInstance.get<MLModelVersionPageResponse>(
+      `/models/${modelId}/versions`,
+    );
+    return response;
+  } catch (error) {
+    console.error(`Failed for getModelById (id: ${modelId}):`, error);
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(
+      0,
+      `Failed to get model by id: ${modelId}. Details: ${String(error)}`,
+    );
+  }
+};
+
+export const selectModelVersion = async (
+  modelId: number,
+  version: string,
+): Promise<MLModelResponse> => {
+  try {
+    const response = await apiClientInstance.post<MLModelResponse>(
+      `/models/${modelId}/select?version=${version}`,
+    );
+    return response;
+  } catch (error) {
+    console.error(
+      `Failed for selectModelVersion (id: ${modelId}, version: ${version}):`,
+      error,
+    );
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(
+      0,
+      `Failed to select model version ${version} by id: ${modelId}. Details: ${String(error)}`,
     );
   }
 };

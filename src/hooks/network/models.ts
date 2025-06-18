@@ -1,8 +1,8 @@
-import { getModelById, getModels } from '@/api/endpoints';
+import { getModelById, getModelVersions, getModels } from '@/api/endpoints';
 import { MLModelResponse, MLModelVersionResponse } from '@/api/types';
 import { Model, ModelVersion } from '@/entities/ml-model';
 import { useCallback } from 'react';
-import { useApiData } from './shared/useApiData';
+import { useApiData, useApiItem } from './shared/useApiData';
 
 /**
  * Custom hook for managing models data
@@ -23,15 +23,33 @@ export function useModels(): {
 }
 
 /**
- * Hook for fetching a single model by ID
+ * Custom hook for fetching model by ID
  */
 export function useModel(modelID: number): {
-  data: ModelVersion[];
+  data: Model | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 } {
   const fetchFn = useCallback(() => getModelById(modelID), [modelID]);
+
+  return useApiItem<MLModelResponse, Model>({
+    fetchFn,
+    transformFn: MLModelResponse.toEntity,
+    errorMessage: `Failed to fetch model with ID: ${modelID}`,
+  });
+}
+
+/**
+ * Custom hook for fetching versions of model by ID
+ */
+export function useModelVersions(modelID: number): {
+  data: ModelVersion[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+} {
+  const fetchFn = useCallback(() => getModelVersions(modelID), [modelID]);
 
   return useApiData<MLModelVersionResponse, ModelVersion>({
     fetchFn,

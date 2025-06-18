@@ -6,7 +6,7 @@ import { ColumnDef, Row } from '@tanstack/react-table';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 
-const SelectCell = <TData extends ModelVersion>({
+function SelectCell<TData extends ModelVersion>({
   row,
   isSelected,
   onSelect,
@@ -14,9 +14,9 @@ const SelectCell = <TData extends ModelVersion>({
 }: {
   row: Row<TData>;
   isSelected: boolean;
-  onSelect: (versionId: string) => void;
+  onSelect: (version: string) => void;
   className?: string;
-}) => {
+}) {
   const version = row.original;
   const [isHovered, setIsHovered] = useState(false);
 
@@ -31,7 +31,7 @@ const SelectCell = <TData extends ModelVersion>({
             : 'h-8 w-8 p-0 rounded-full cursor-pointer',
           isSelected ? '' : isHovered ? 'bg-gray-100 opacity-100' : 'opacity-0',
         )}
-        onClick={() => onSelect(version.id.toString())}
+        onClick={() => onSelect(version.version)}
         onPointerEnter={() => setIsHovered(true)}
         onPointerLeave={() => setIsHovered(false)}
         aria-label="Select version button"
@@ -55,11 +55,11 @@ const SelectCell = <TData extends ModelVersion>({
       </Button>
     </div>
   );
-};
+}
 
 export const columns = <TData extends ModelVersion>(
-  selectedVersionId: string | null,
-  onVersionSelect: (versionId: string) => void,
+  selectedVersion: string | null,
+  onVersionSelect: (version: string) => void,
 ): ColumnDef<TData>[] => [
   {
     id: 'select',
@@ -74,14 +74,14 @@ export const columns = <TData extends ModelVersion>(
     cell: ({ row }) => (
       <SelectCell
         row={row}
-        isSelected={selectedVersionId === row.original.id.toString()}
+        isSelected={selectedVersion === row.original.version}
         onSelect={onVersionSelect}
         className="flex justify-center items-center"
         aria-label="Select version cell"
       />
     ),
-    minSize: 50,
-    maxSize: 60,
+    minSize: 60,
+    maxSize: 80,
   },
   {
     accessorKey: 'version',
@@ -90,17 +90,17 @@ export const columns = <TData extends ModelVersion>(
       const version = row.original.version;
       return <div className="font-mono text-sm">v{version}</div>;
     },
-    minSize: 150,
+    minSize: 120,
   },
   {
     accessorKey: 'epochs',
     header: 'Epochs',
-    minSize: 50,
+    minSize: 60,
   },
   {
     accessorKey: 'time',
     header: 'Training Time',
-    minSize: 50,
+    minSize: 60,
   },
   {
     accessorKey: 'precision',

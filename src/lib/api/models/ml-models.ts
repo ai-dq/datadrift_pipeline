@@ -24,6 +24,7 @@ export namespace MLModelResponse {
       type: response.type,
       version: response.version,
       updatedAt: formatRelativeTime(response.updated_at),
+      description: response.description || null,
     };
   }
 }
