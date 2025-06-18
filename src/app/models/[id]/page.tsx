@@ -1,33 +1,39 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ModelVersion } from '@/entities/ml-model';
 import { useModel, useModelVersions } from '@/hooks/network/models';
-import { memo, use, useCallback, useEffect, useMemo, useState } from 'react';
+import { selectModelVersion } from '@/lib/api/endpoints';
 import { useRouter } from 'next/navigation';
+import { memo, use, useCallback, useEffect, useMemo, useState } from 'react';
 import { columns } from './columns';
 import { DataTable } from './data-table';
-import { selectModelVersion } from '@/lib/api/endpoints';
-import { ModelVersion } from '@/entities/ml-model';
-import { Badge } from '@/components/ui/badge';
 
-// Define MemoizedDataTable at the top level for effective memoization
 const MemoizedDataTable = memo(
-  ({
-    versions,
-    selectedVersion,
-    handleVersionSelect,
-  }: {
-    versions: ModelVersion[];
-    selectedVersion: string | null;
-    handleVersionSelect: (version: string) => Promise<void>;
-  }) => {
-    return (
-      <DataTable
-        data={versions}
-        columns={columns(selectedVersion, handleVersionSelect)}
-      />
-    );
+  ({ versions, columns }: { versions: ModelVersion[]; columns: any[] }) => {
+    return <DataTable data={versions} columns={columns} />;
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison function for better memoization
+    if (prevProps.versions.length !== nextProps.versions.length) return false;
+    if (prevProps.columns.length !== nextProps.columns.length) return false;
+
+    // Compare versions array
+    for (let i = 0; i < prevProps.versions.length; i++) {
+      const prevVersion = prevProps.versions[i];
+      const nextVersion = nextProps.versions[i];
+      if (!prevVersion || !nextVersion) return false;
+      if (
+        prevVersion.version !== nextVersion.version ||
+        (prevVersion as any).isSelected !== (nextVersion as any).isSelected
+      ) {
+        return false;
+      }
+    }
+
+    return true;
   },
 );
 MemoizedDataTable.displayName = 'MemoizedDataTable';
@@ -111,15 +117,24 @@ export default function ModelVersionPage({
 
   const handleVersionSelect = useCallback(
     async (version: string) => {
+      if (version === selectedVersion) return; // Prevent unnecessary calls
       try {
         await selectModelVersion(modelId, version);
         setSelectedVersion(version);
-        router.refresh();
+        // Use setTimeout to avoid immediate router refresh
+        setTimeout(() => {
+          router.refresh();
+        }, 0);
       } catch (error) {
         console.error('Failed to select model version:', error);
       }
     },
-    [modelId, router],
+    [modelId, selectedVersion, router],
+  );
+
+  const memoizedColumns = useMemo(
+    () => columns(selectedVersion, handleVersionSelect),
+    [selectedVersion, handleVersionSelect],
   );
 
   if (modelLoading || versionsLoading) {
@@ -157,11 +172,7 @@ export default function ModelVersionPage({
             </div>
           </CardHeader>
           <CardContent>
-            <MemoizedDataTable
-              versions={versions}
-              selectedVersion={selectedVersion}
-              handleVersionSelect={handleVersionSelect}
-            />
+            <MemoizedDataTable versions={versions} columns={memoizedColumns} />
           </CardContent>
         </Card>
       </div>
