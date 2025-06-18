@@ -71,20 +71,32 @@ export const columns = (
   },
   {
     accessorKey: 'epochs',
+    header: 'Epochs',
+    size: 50,
   },
   {
     accessorKey: 'time',
+    header: 'Training Time',
+    size: 50,
   },
   {
     accessorKey: 'precision',
+    header: 'Precision',
+    size: 60,
   },
   {
     accessorKey: 'recall',
+    header: 'Recall',
+    size: 60,
   },
   {
     accessorKey: 'map50',
+    header: 'mAP50',
+    size: 60,
   },
   {
     accessorKey: 'map95',
+    header: 'mAP50-95',
+    size: 60,
   },
 ];

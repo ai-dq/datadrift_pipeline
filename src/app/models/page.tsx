@@ -174,7 +174,10 @@ export default function ModelsPage() {
   // Handle row click
   const handleRowClick = useCallback(
     (rowData: Model) => {
-      router.push(`/models/${rowData.id}`);
+      const model = data.find((model) => model.id === rowData.id);
+      if (model) {
+        router.push(`/models/${rowData.id}?${model}`);
+      }
     },
     [data],
   );
