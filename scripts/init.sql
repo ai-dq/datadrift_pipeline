@@ -26,9 +26,6 @@ alter table ml_models
 
 create table if not exists ml_models_versions
 (
-    id            uuid                     default gen_random_uuid() not null
-        constraint ml_models_trainmodels_pkey
-            primary key,
     ml_model      integer                                            not null
         constraint ml_models_trainmodels_ml_models_id_fkey
             references ml_models,
@@ -37,7 +34,9 @@ create table if not exists ml_models_versions
     version       text                                               not null,
     training_args jsonb,
     metrics       jsonb,
-    notes         text
+    notes         text,
+    constraint ml_models_versions_pk
+        primary key (version, ml_model)
 );
 
 comment on column ml_models_versions.training_args is '학습 인자 저장 (learning_rate, epochs, etc.)';
