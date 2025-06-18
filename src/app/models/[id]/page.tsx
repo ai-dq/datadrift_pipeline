@@ -4,10 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Model } from '@/entities/ml-model';
 import { useModel } from '@/hooks/network/models';
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, use, useCallback, useEffect, useMemo, useState } from 'react';
 import { columns } from './columns';
 import { DataTable } from './data-table';
-import React from 'react';
 
 /**
  * Component for rendering loading skeleton
@@ -71,18 +70,11 @@ export default function ModelVersionPage({
     null,
   );
 
-  // Create a stable string of version IDs to use as a dependency for memoizing `versions`.
-  // This ensures `versions` reference only changes if its content (IDs) changes.
-  const stableVersionIds = useMemo(() => {
-    if (!rawVersions || rawVersions.length === 0) return '';
-    return rawVersions.map((v: { id: any }) => v.id).join(','); // Assuming each version object has an 'id' property
-  }, [rawVersions]);
-
-  // Memoized `versions` array. Its reference is stable if `stableVersionIds` is unchanged.
+  // Memoized `versions` array
   const versions = useMemo(() => {
-    if (!rawVersions) return []; // Or a more specific empty state if needed
+    if (!rawVersions) return [];
     return rawVersions;
-  }, [stableVersionIds]);
+  }, [rawVersions]);
 
   const handleVersionSelect = useCallback((versionId: string) => {
     setSelectedVersionId(versionId);
@@ -129,7 +121,7 @@ export default function ModelVersionPage({
     return <ModelVersionPageSkeleton />;
   }
 
-  const MemoizedDataTable = React.memo(() => {
+  const MemoizedDataTable = memo(() => {
     return (
       <DataTable
         data={versions}
@@ -137,6 +129,7 @@ export default function ModelVersionPage({
       />
     );
   });
+  MemoizedDataTable.displayName = 'MemoizedDataTable';
 
   return (
     <div className="container mx-auto px-4 py-8">
