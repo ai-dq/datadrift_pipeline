@@ -13,6 +13,11 @@ BEGIN
             'action', 'delete',
             'id', OLD.id
         )::TEXT INTO payload;
+    ELSIF TG_OP = 'UPDATE' THEN
+        SELECT json_build_object(
+            'action', 'update',
+            'id', NEW.id
+        )::TEXT INTO payload;
     END IF;
 
     PERFORM pg_notify('project_updated', payload);
@@ -21,6 +26,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_sync_project
-    AFTER INSERT OR DELETE ON project
+    AFTER INSERT OR DELETE OR UPDATE ON project
     FOR EACH ROW
     EXECUTE FUNCTION notify_project_update();
