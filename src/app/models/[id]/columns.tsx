@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ModelVersion } from '@/entities/ml-model';
 import { cn } from '@/utils/tailwind.util';
@@ -36,10 +35,8 @@ const SelectCell = memo(
     const buttonClassName = useMemo(
       () =>
         cn(
-          'transition-all duration-300 border-none outline-none focus:outline-none hover:scale-100 active:scale-100',
-          isSelected
-            ? 'h-auto w-auto p-1 rounded-md'
-            : 'h-8 w-8 p-0 rounded-full cursor-pointer',
+          'h-8 w-8 p-0 transition-all duration-300 border-none outline-none focus:outline-none hover:scale-100 active:scale-100',
+          isSelected ? 'rounded-md' : 'rounded-full cursor-pointer',
           isSelected
             ? ''
             : isHovered
@@ -52,7 +49,7 @@ const SelectCell = memo(
     const dotClassName = useMemo(
       () =>
         cn(
-          'rounded-full bg-gray-400 transition-all duration-300 ease-in-out',
+          'rounded-full bg-gray-400 transition-all duration-400 ease-in-out',
           isHovered ? 'h-3 w-3' : 'h-2 w-2',
         ),
       [isHovered],
@@ -69,13 +66,7 @@ const SelectCell = memo(
           aria-label="Select version button"
         >
           {isSelected ? (
-            <Badge
-              variant="secondary"
-              className="bg-teal-50 text-green-800 text-xs px-2 py-1"
-            >
-              <Check className="h-3 w-3" />
-              Current
-            </Badge>
+            <Check className="size-5 text-teal-600 font-bold animate-in zoom-in-75 duration-400" />
           ) : (
             <div className={dotClassName} />
           )}

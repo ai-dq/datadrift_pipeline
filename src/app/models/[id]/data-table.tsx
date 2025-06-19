@@ -73,7 +73,7 @@ export const DataTable = memo(
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
-                      className="py-3"
+                      className={`py-3 ${header.column.columnDef.header === 'Version' ? 'text-left' : 'text-center'}`}
                       style={{
                         minWidth: header.column.columnDef.minSize,
                         maxWidth: header.column.columnDef.maxSize,
@@ -101,7 +101,7 @@ export const DataTable = memo(
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className="py-2"
+                        className={`py-2 ${cell.column.columnDef.header === 'Version' ? 'text-left' : 'text-center'}`}
                         style={{
                           minWidth: cell.column.columnDef.minSize,
                           maxWidth: cell.column.columnDef.maxSize,
