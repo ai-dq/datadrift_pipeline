@@ -107,6 +107,11 @@ const TrainedAtCell = memo(({ row }: { row: Row<ModelVersion> }) => {
 });
 TrainedAtCell.displayName = 'TrainedAtCell';
 
+const MetricsCell = memo(({ metric }: { metric: number | null }) => {
+  return <div>{metric || '-'}</div>;
+});
+MetricsCell.displayName = 'MetricsCell';
+
 export const columns = (
   selectedVersion: string | null,
   onVersionSelect: (version: string) => void,
@@ -119,47 +124,59 @@ export const columns = (
         row={row}
         isSelected={selectedVersion === row.original.version}
         onSelect={onVersionSelect}
-        className="flex justify-center items-center"
+        className="flex justify-center-safe"
         aria-label="Select version cell"
       />
     ),
-    minSize: 60,
+    minSize: 50,
+    maxSize: 50,
+  },
+  {
+    header: 'Version',
+    cell: ({ row }) => <VersionCell row={row} />,
+    minSize: 80,
     maxSize: 80,
   },
   {
-    accessorKey: 'version',
-    header: 'Version',
-    cell: ({ row }) => <VersionCell row={row} />,
-    minSize: 120,
-  },
-  {
-    accessorKey: 'epochs',
     header: 'Epochs',
+    cell: ({ row }) => (
+      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+    ),
     minSize: 60,
   },
   {
-    accessorKey: 'time',
     header: 'Training Time',
+    cell: ({ row }) => (
+      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+    ),
     minSize: 60,
   },
   {
-    accessorKey: 'precision',
     header: 'Precision',
+    cell: ({ row }) => (
+      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+    ),
     minSize: 60,
   },
   {
-    accessorKey: 'recall',
     header: 'Recall',
+    cell: ({ row }) => (
+      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+    ),
     minSize: 60,
   },
   {
-    accessorKey: 'map50',
     header: 'mAP50',
+    cell: ({ row }) => (
+      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+    ),
     minSize: 60,
   },
   {
-    accessorKey: 'map95',
     header: 'mAP50-95',
+    cell: ({ row }) => (
+      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+    ),
     minSize: 60,
   },
   {

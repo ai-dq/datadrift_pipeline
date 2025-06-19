@@ -95,7 +95,7 @@ export default function ModelVersionPage({
   const router = useRouter();
 
   const { data: model, loading: modelLoading } = useModel(modelId);
-  const { data: rawVersions, loading: versionsLoading } =
+  const { data: versions, loading: versionsLoading } =
     useModelVersions(modelId);
 
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
@@ -106,14 +106,14 @@ export default function ModelVersionPage({
     }
   }, [model?.version]);
 
-  const versions = useMemo(() => {
-    if (!rawVersions) return [];
+  const memoizedVersions = useMemo(() => {
+    if (!versions) return [];
 
-    return rawVersions.map((version: ModelVersion) => ({
+    return versions.map((version: ModelVersion) => ({
       ...version,
       isSelected: version.version === selectedVersion,
     }));
-  }, [rawVersions, selectedVersion]);
+  }, [versions, selectedVersion]);
 
   const handleVersionSelect = useCallback(
     async (version: string) => {
@@ -167,12 +167,15 @@ export default function ModelVersionPage({
             <div>
               <CardTitle>Model Versions</CardTitle>
               <p className="text-sm text-gray-500">
-                Total {versions.length} versions
+                Total {memoizedVersions.length} versions
               </p>
             </div>
           </CardHeader>
           <CardContent>
-            <MemoizedDataTable versions={versions} columns={memoizedColumns} />
+            <MemoizedDataTable
+              versions={memoizedVersions}
+              columns={memoizedColumns}
+            />
           </CardContent>
         </Card>
       </div>
