@@ -29,8 +29,6 @@ CREATE TABLE project_ml_models_relation (
 );
 
 /** cron syncing project cache */
-CREATE EXTENSION pg_cron;
-
 SELECT cron.schedule('0 * * * *',
     $$
     INSERT INTO project_cache

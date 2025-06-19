@@ -90,24 +90,6 @@ async function main() {
       `'${DASHBOARD_DB_NAME}' 데이터베이스에 성공적으로 연결되었습니다.`,
     );
 
-    // 데이터베이스 설정 SQL 실행
-    // __dirname은 현재 실행 중인 스크립트가 위치한 디렉토리를 가리킵니다.
-    // init.sql 파일이 database.ts와 동일한 디렉토리에 있다고 가정합니다.
-    const initSqlFilePath = path.join(__dirname, 'init.sql');
-    console.info(`다음 경로에서 SQL 설정 실행 중: ${initSqlFilePath}`);
-
-    if (!fs.existsSync(initSqlFilePath)) {
-      console.error(
-        `오류: SQL 파일(${initSqlFilePath})을 찾을 수 없습니다. 'init.sql' 파일이 스크립트와 동일한 디렉토리에 있는지 확인하세요.`,
-      );
-      process.exit(1);
-    }
-
-    const initSqlContent = fs.readFileSync(initSqlFilePath, 'utf-8');
-    console.info('SQL 설정 스크립트 실행 중...');
-    await dashboardClient.query(initSqlContent);
-    console.info('데이터베이스 설정이 성공적으로 완료되었습니다.');
-
     // label-studio & dashboard 테이블 연동
     // dashboard 데이터베이스에 label-studio의 테이블에 대한 foreign table을 연결합니다.
     const foreignTableSqlFilePath = path.join(__dirname, 'foreign-table.sql');
