@@ -10,6 +10,7 @@ const POSTGRE_PORT = process.env.POSTGRE_PORT
 const POSTGRE_USER = process.env.POSTGRE_USER;
 const POSTGRE_PASSWORD = process.env.POSTGRE_PASSWORD; // 비밀번호는 없을 수도 있음
 const DASHBOARD_DB_NAME = 'dashboard'; // 사용할 데이터베이스 이름
+const LABEL_STUDIO_DB_NAME = 'label-studio'; // label-studio 데이터베이스 이름
 
 /**
  * PostgreSQL 접속 설정을 생성하는 함수
@@ -92,20 +93,42 @@ async function main() {
     // 데이터베이스 설정 SQL 실행
     // __dirname은 현재 실행 중인 스크립트가 위치한 디렉토리를 가리킵니다.
     // init.sql 파일이 database.ts와 동일한 디렉토리에 있다고 가정합니다.
-    const sqlFilePath = path.join(__dirname, 'init.sql');
-    console.info(`다음 경로에서 SQL 설정 실행 중: ${sqlFilePath}`);
+    const initSqlFilePath = path.join(__dirname, 'init.sql');
+    console.info(`다음 경로에서 SQL 설정 실행 중: ${initSqlFilePath}`);
 
-    if (!fs.existsSync(sqlFilePath)) {
+    if (!fs.existsSync(initSqlFilePath)) {
       console.error(
-        `오류: SQL 파일(${sqlFilePath})을 찾을 수 없습니다. 'init.sql' 파일이 스크립트와 동일한 디렉토리에 있는지 확인하세요.`,
+        `오류: SQL 파일(${initSqlFilePath})을 찾을 수 없습니다. 'init.sql' 파일이 스크립트와 동일한 디렉토리에 있는지 확인하세요.`,
       );
       process.exit(1);
     }
 
-    const sqlContent = fs.readFileSync(sqlFilePath, 'utf-8');
+    const initSqlContent = fs.readFileSync(initSqlFilePath, 'utf-8');
     console.info('SQL 설정 스크립트 실행 중...');
-    await dashboardClient.query(sqlContent);
+    await dashboardClient.query(initSqlContent);
     console.info('데이터베이스 설정이 성공적으로 완료되었습니다.');
+
+    // label-studio & dashboard 테이블 연동
+    // dashboard 데이터베이스에 label-studio의 테이블에 대한 foreign table을 연결합니다.
+    const foreignTableSqlFilePath = path.join(__dirname, 'foreign-table.sql');
+    console.info(
+      `다음 경로에서 foreign table 설정 실행 중: ${foreignTableSqlFilePath}`,
+    );
+
+    if (!fs.existsSync(foreignTableSqlFilePath)) {
+      console.error(
+        `오류: SQL 파일(${foreignTableSqlFilePath})을 찾을 수 없습니다. 'foreign-table.sql' 파일이 스크립트와 동일한 디렉토리에 있는지 확인하세요.`,
+      );
+      process.exit(1);
+    }
+
+    const foreignTableSqlContent = fs.readFileSync(
+      foreignTableSqlFilePath,
+      'utf-8',
+    );
+    console.info('foreign table 설정 스크립트 실행 중...');
+    await dashboardClient.query(foreignTableSqlContent);
+    console.info('foreign table 설정이 성공적으로 완료되었습니다.');
   } catch (error) {
     console.error(
       `'${DASHBOARD_DB_NAME}' 데이터베이스 설정 중 오류 발생: ${error}`,
@@ -114,6 +137,53 @@ async function main() {
   } finally {
     await dashboardClient.end();
     console.info(`'${DASHBOARD_DB_NAME}' 데이터베이스 연결이 종료되었습니다.`);
+  }
+
+  // 3. 'label-studio' 데이터베이스에 ls-project-trigger.sql 실행
+  const labelStudioConfig = createDbConfig(LABEL_STUDIO_DB_NAME);
+  console.info(
+    `'${LABEL_STUDIO_DB_NAME}' 데이터베이스에 연결 중: host=${labelStudioConfig.host} port=${labelStudioConfig.port} user=${labelStudioConfig.user} dbname=${LABEL_STUDIO_DB_NAME}`,
+  );
+  const labelStudioClient = new Client(labelStudioConfig);
+
+  try {
+    await labelStudioClient.connect();
+    console.info(
+      `'${LABEL_STUDIO_DB_NAME}' 데이터베이스에 성공적으로 연결되었습니다.`,
+    );
+
+    const lsProjectTriggerSqlFilePath = path.join(
+      __dirname,
+      'ls-project-trigger.sql',
+    );
+    console.info(
+      `다음 경로에서 ls-project-trigger.sql 실행 중: ${lsProjectTriggerSqlFilePath}`,
+    );
+
+    if (!fs.existsSync(lsProjectTriggerSqlFilePath)) {
+      console.error(
+        `오류: SQL 파일(${lsProjectTriggerSqlFilePath})을 찾을 수 없습니다. 'ls-project-trigger.sql' 파일이 스크립트와 동일한 디렉토리에 있는지 확인하세요.`,
+      );
+      process.exit(1);
+    }
+
+    const lsProjectTriggerSqlContent = fs.readFileSync(
+      lsProjectTriggerSqlFilePath,
+      'utf-8',
+    );
+    console.info('ls-project-trigger.sql 스크립트 실행 중...');
+    await labelStudioClient.query(lsProjectTriggerSqlContent);
+    console.info('ls-project-trigger.sql이 성공적으로 실행되었습니다.');
+  } catch (error) {
+    console.error(
+      `'${LABEL_STUDIO_DB_NAME}' 데이터베이스에서 ls-project-trigger.sql 실행 중 오류 발생: ${error}`,
+    );
+    process.exit(1);
+  } finally {
+    await labelStudioClient.end();
+    console.info(
+      `'${LABEL_STUDIO_DB_NAME}' 데이터베이스 연결이 종료되었습니다.`,
+    );
   }
 }
 
