@@ -4,7 +4,7 @@ CREATE SERVER IF NOT EXISTS labelstudio
     FOREIGN DATA WRAPPER postgres_fdw
     OPTIONS (dbname 'label-studio');
 
-CREATE USER MAPPING FOR PUBLIC SERVER labelstudio
+CREATE USER MAPPING IF NOT EXISTS FOR PUBLIC SERVER labelstudio
     OPTIONS (
         user 'postgres'
     );
