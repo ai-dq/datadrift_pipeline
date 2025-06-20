@@ -1,4 +1,4 @@
-export default function SwaggerPage() {
+export default function SwaggerServicePage() {
   return (
     <div className="w-full h-screen">
       <iframe
