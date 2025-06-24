@@ -2,7 +2,7 @@ CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 
 CREATE SERVER IF NOT EXISTS labelstudio
     FOREIGN DATA WRAPPER postgres_fdw
-    OPTIONS (dbname 'label-studio');
+    OPTIONS (dbname 'labelstudio');
 
 CREATE USER MAPPING IF NOT EXISTS FOR PUBLIC SERVER labelstudio
     OPTIONS (
