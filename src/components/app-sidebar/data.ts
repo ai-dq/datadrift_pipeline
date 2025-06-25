@@ -25,7 +25,7 @@ export const services: ServiceItem[] = [
 export const menuItems: MenuItem[] = [
   {
     title: 'Label Studio',
-    url: '/labelstudio',
+    url: '/dashboard/labelstudio',
     icon: Settings2,
     isActive: true,
     children: [
@@ -37,7 +37,7 @@ export const menuItems: MenuItem[] = [
   },
   {
     title: 'Models',
-    url: '/models',
+    url: '/dashboard/models',
     icon: Bot,
     isActive: true,
     children: [
