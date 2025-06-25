@@ -1,7 +1,7 @@
 import { ApiError } from 'next/dist/server/api-utils';
 import apiClientInstance from '../../client';
 
-import { Project } from '../../types';
+import { Project } from '@/entities/labelstudio'; 
 
 export const getProjects = async (): Promise<Project[]> => {
   try {
