@@ -1,11 +1,12 @@
 import { ApiError } from 'next/dist/server/api-utils';
 import apiClientInstance from '../../client';
 
-import { Project } from '@/entities/labelstudio'; 
+import { ProjectPageResponse } from '../../types';
 
-export const getProjects = async (): Promise<Project[]> => {
+export const getProjects = async (): Promise<ProjectPageResponse> => {
   try {
-    const response = await apiClientInstance.get<Project[]>('/projects');
+    const response =
+      await apiClientInstance.get<ProjectPageResponse>('/projects');
     return response;
   } catch (error) {
     console.error('Failed to getProjects:', error);
