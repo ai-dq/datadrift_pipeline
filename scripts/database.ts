@@ -10,7 +10,7 @@ const POSTGRE_PORT = process.env.POSTGRE_PORT
 const POSTGRE_USER = process.env.POSTGRE_USER;
 const POSTGRE_PASSWORD = process.env.POSTGRE_PASSWORD; // 비밀번호는 없을 수도 있음
 const DASHBOARD_DB_NAME = 'dashboard'; // 사용할 데이터베이스 이름
-const LABEL_STUDIO_DB_NAME = 'label-studio'; // label-studio 데이터베이스 이름
+const LABEL_STUDIO_DB_NAME = 'labelstudio'; // label-studio 데이터베이스 이름
 
 /**
  * PostgreSQL 접속 설정을 생성하는 함수
@@ -104,10 +104,14 @@ async function main() {
       process.exit(1);
     }
 
-    const foreignTableSqlContent = fs.readFileSync(
+    let foreignTableSqlContent = fs.readFileSync(
       foreignTableSqlFilePath,
       'utf-8',
     );
+    foreignTableSqlContent = foreignTableSqlContent
+      .replace('{{POSTGRE_USER}}', POSTGRE_USER)
+      .replace('{{LABEL_STUDIO_DB_NAME}}', LABEL_STUDIO_DB_NAME);
+
     console.info('foreign table 설정 스크립트 실행 중...');
     await dashboardClient.query(foreignTableSqlContent);
     console.info('foreign table 설정이 성공적으로 완료되었습니다.');
