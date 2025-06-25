@@ -6,6 +6,10 @@ export type { GetMLModelsResponse as MLModelPageResponse } from './models/ml-mod
 export { MLModelVersionResponse } from './models/ml-model-version';
 export type { GetMLModelVersionsResponse as MLModelVersionPageResponse } from './models/ml-model-version';
 
+// LabelStudio projects
+export { ProjectResponse } from './models/labelstudio/projects';
+export type { GetProjectsResponse as ProjectPageResponse } from './models/labelstudio/projects';
+
 // Pagination models
 export type {
   PaginatedResponse,

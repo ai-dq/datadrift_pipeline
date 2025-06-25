@@ -15,17 +15,17 @@ import { Model } from '@/entities/ml-model';
 import { useModels } from '@/hooks/network/models';
 import { ColumnFiltersState, OnChangeFn } from '@tanstack/react-table';
 import {
-  Activity,
   AlertCircle,
-  CreditCard,
+  PanelsLeftBottom,
   Search,
-  Users,
+  Signature,
+  Table2,
   X,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { columns } from './columns';
 import { DataTable } from './data-table';
-import { useRouter } from 'next/navigation';
 
 /**
  * Custom hook for managing column filters
@@ -213,22 +213,22 @@ export default function ModelsPage() {
       {/* Stats */}
       <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          title="OCR"
-          description="Number of OCR models"
-          value={stats.ocr}
-          icon={Users}
-        />
-        <StatCard
           title="Layout Detection"
           description="Number of Layout Detection models"
           value={stats.layout}
-          icon={Activity}
+          icon={PanelsLeftBottom}
         />
         <StatCard
-          title="Extraction"
-          description="Number of Extraction models"
+          title="OCR"
+          description="Number of OCR models"
+          value={stats.ocr}
+          icon={Signature}
+        />
+        <StatCard
+          title="Table Recognition"
+          description="Number of Table Recognition models"
           value={stats.extraction}
-          icon={CreditCard}
+          icon={Table2}
         />
       </div>
 
