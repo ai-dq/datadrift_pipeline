@@ -7,8 +7,8 @@ export { MLModelVersionResponse } from './models/ml-model-version';
 export type { GetMLModelVersionsResponse as MLModelVersionPageResponse } from './models/ml-model-version';
 
 // LabelStudio projects
-export { ProjectResponse } from './models/projects';
-export type { GetProjectsResponse as ProjectPageResponse } from './models/projects';
+export { ProjectResponse } from './models/labelstudio/projects';
+export type { GetProjectsResponse as ProjectPageResponse } from './models/labelstudio/projects';
 
 // Pagination models
 export type {
