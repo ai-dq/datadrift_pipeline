@@ -109,8 +109,8 @@ async function main() {
       'utf-8',
     );
     foreignTableSqlContent = foreignTableSqlContent
-      .replace('{{POSTGRE_USER}}', POSTGRE_USER)
-      .replace('{{LABEL_STUDIO_DB_NAME}}', LABEL_STUDIO_DB_NAME);
+      .replaceAll('{{POSTGRE_USER}}', POSTGRE_USER)
+      .replaceAll('{{LABEL_STUDIO_DB_NAME}}', LABEL_STUDIO_DB_NAME);
 
     console.info('foreign table 설정 스크립트 실행 중...');
     await dashboardClient.query(foreignTableSqlContent);

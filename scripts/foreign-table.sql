@@ -25,17 +25,26 @@ BEGIN
 END $$;
 
 /** Project local cache table */
-CREATE TABLE project_cache(
-    id INTEGER PRIMARY KEY,
-    title TEXT
+CREATE TABLE IF NOT EXISTS project_cache(
+    id INTEGER NOT NULL
+        CONSTRAINT project_cache_pkey
+            PRIMARY KEY,
+    title TEXT,
+    ml_model_type model_type
 );
 
-CREATE TABLE project_ml_models_relation (
+ALTER TABLE project_cache
+    OWNER TO {{POSTGRE_USER}};
+
+CREATE TABLE IF NOT EXISTS project_ml_models_relation (
     project_id INTEGER,
     model_id INTEGER,
     FOREIGN KEY (project_id) REFERENCES project_cache(id),
     FOREIGN KEY (model_id) REFERENCES ml_models(id)
 );
+
+ALTER TABLE project_ml_models_relation
+    OWNER TO {{POSTGRE_USER}};
 
 /** cron syncing project cache */
 SELECT cron.schedule('0 * * * *',
