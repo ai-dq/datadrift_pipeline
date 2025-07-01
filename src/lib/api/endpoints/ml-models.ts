@@ -1,4 +1,4 @@
-import apiClientInstance, { ApiError } from '../client';
+import { APIClient, ApiError } from '../client';
 import {
   MLModelPageResponse,
   MLModelResponse,
@@ -8,7 +8,7 @@ import {
 export const getModels = async (): Promise<MLModelPageResponse> => {
   try {
     const response =
-      await apiClientInstance.get<MLModelPageResponse>('/models');
+      await APIClient.labelstudio.get<MLModelPageResponse>('/models');
     return response;
   } catch (error) {
     console.error(`Failed for getModels:`, error);
@@ -21,7 +21,7 @@ export const getModelById = async (
   modelId: number,
 ): Promise<MLModelResponse> => {
   try {
-    const response = await apiClientInstance.get<MLModelResponse>(
+    const response = await APIClient.labelstudio.get<MLModelResponse>(
       `/models/${modelId}`,
     );
     return response;
@@ -39,9 +39,10 @@ export const getModelVersions = async (
   modelId: number,
 ): Promise<MLModelVersionPageResponse> => {
   try {
-    const response = await apiClientInstance.get<MLModelVersionPageResponse>(
-      `/models/${modelId}/versions`,
-    );
+    const response =
+      await APIClient.labelstudio.get<MLModelVersionPageResponse>(
+        `/models/${modelId}/versions`,
+      );
     return response;
   } catch (error) {
     console.error(`Failed for getModelById (id: ${modelId}):`, error);
@@ -58,7 +59,7 @@ export const selectModelVersion = async (
   version: string,
 ): Promise<MLModelResponse> => {
   try {
-    const response = await apiClientInstance.post<MLModelResponse>(
+    const response = await APIClient.labelstudio.post<MLModelResponse>(
       `/models/${modelId}/select?version=${version}`,
     );
     return response;

@@ -1,7 +1,5 @@
 import { useCallback, useState } from 'react';
 
-const API_BASE_URL = '/api/v1';
-
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Record<string, string>;
@@ -137,7 +135,10 @@ export class ApiError extends Error {
   }
 }
 
-export const apiClientInstance = new ApiClient(API_BASE_URL);
+export const APIClient = {
+  qocr: new ApiClient('/api/qocr'),
+  labelstudio: new ApiClient('/api/labelstudio'),
+};
 
 // React Hook for API calls with loading state
 type UseApiOptions<T> = {
@@ -177,4 +178,4 @@ export function useApi<T = any>(
   return { data, error, loading, execute };
 }
 
-export default apiClientInstance;
+export default APIClient;
