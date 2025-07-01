@@ -22,10 +22,13 @@ export const getAccessTokenByRefresh = async (
 export const getTokensByCredentials = async (
   email: string,
   password: string,
-): Promise<void> => {
+): Promise<{ access: string; refresh: string }> => {
   try {
     const basicAuth = btoa(`${email}:${password}`);
-    await APIClient.labelstudio.post(
+    const response = await APIClient.labelstudio.post<{
+      access: string;
+      refresh: string;
+    }>(
       '/token/obtain/',
       { email, password },
       {
@@ -35,6 +38,10 @@ export const getTokensByCredentials = async (
         },
       },
     );
+
+    if (!response.access || !response.refresh)
+      throw new APIError(0, 'No tokens in response');
+    return { access: response.access, refresh: response.refresh };
   } catch (error) {
     console.error('Failed to obtain tokens:', error);
     if (error instanceof APIError) throw error;

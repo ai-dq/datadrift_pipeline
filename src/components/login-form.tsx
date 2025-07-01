@@ -3,27 +3,34 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils/tailwind.util';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 
-import { directLogin, getAuthPrerequisits } from '@/lib/api/endpoints/direct';
 import { getTokensByCredentials } from '@/lib/api/endpoints/jwt';
-import { directLogin } from '@/lib/api/endpoints/direct';
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<'div'>) {
-  const [csrfMiddlewareToken, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  useEffect(() => {
-    async function fetchMiddlewareToken(): Promise<void> {
-      const token = await getMiddlewareToken();
-      setToken(token);
-    }
-    fetchMiddlewareToken();
-  }, []);
+  const handleLogin = useCallback(
+    async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+
+      try {
+        const { access, refresh } = await getTokensByCredentials(
+          email,
+          password,
+        );
+        localStorage.setItem('access_token', access);
+        document.cookie = `refresh_token=${refresh}; path=/; httpOnly; max-age=3600`;
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    [email, password],
+  );
 
   const handleLogin = useCallback(
     async (e?: React.FormEvent) => {
