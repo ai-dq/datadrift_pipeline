@@ -1,3 +1,5 @@
+'use client';
+
 import { GalleryVerticalEnd } from 'lucide-react';
 import Image from 'next/image';
 
@@ -23,7 +25,7 @@ export default function LoginPage() {
       </div>
       <div className="bg-muted relative hidden lg:block">
         <Image
-          src="/placeholder.svg"
+          src="/window.svg"
           alt="Image"
           fill
           className="object-cover dark:brightness-[0.2] dark:grayscale"
