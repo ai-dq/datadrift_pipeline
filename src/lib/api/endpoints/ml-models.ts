@@ -5,10 +5,12 @@ import {
   MLModelVersionPageResponse,
 } from '../types';
 
+const ML_MODELS_PREFIX = '/ml_models';
+
 export const getModels = async (): Promise<MLModelPageResponse> => {
   try {
     const response =
-      await APIClient.labelstudio.get<MLModelPageResponse>('/models');
+      await APIClient.labelstudio.get<MLModelPageResponse>(ML_MODELS_PREFIX);
     return response;
   } catch (error) {
     console.error(`Failed for getModels:`, error);
@@ -22,7 +24,7 @@ export const getModelById = async (
 ): Promise<MLModelResponse> => {
   try {
     const response = await APIClient.labelstudio.get<MLModelResponse>(
-      `/models/${modelId}`,
+      `${ML_MODELS_PREFIX}/${modelId}`,
     );
     return response;
   } catch (error) {
@@ -41,7 +43,7 @@ export const getModelVersions = async (
   try {
     const response =
       await APIClient.labelstudio.get<MLModelVersionPageResponse>(
-        `/models/${modelId}/versions`,
+        `${ML_MODELS_PREFIX}/${modelId}/versions`,
       );
     return response;
   } catch (error) {
@@ -60,7 +62,7 @@ export const selectModelVersion = async (
 ): Promise<MLModelResponse> => {
   try {
     const response = await APIClient.labelstudio.post<MLModelResponse>(
-      `/models/${modelId}/select?version=${version}`,
+      `${ML_MODELS_PREFIX}/${modelId}/select?version=${version}`,
     );
     return response;
   } catch (error) {
