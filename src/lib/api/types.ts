@@ -26,3 +26,5 @@ export class APIError extends Error {
     this.status = status;
   }
 }
+
+// Tokens are stored in localStorage under 'access_token' and 'refresh_token' keys for JWT authentication.

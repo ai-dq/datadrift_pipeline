@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { getAccessTokenByRefresh } from './endpoints/jwt';
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -7,6 +8,47 @@ type RequestOptions = {
   signal?: AbortSignal;
 };
 
+// --- JWT Token Helpers ---
+function getToken(key: string): string | null {
+  return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+}
+
+function setToken(key: string, value: string) {
+  if (typeof window !== 'undefined') localStorage.setItem(key, value);
+}
+
+function removeToken(key: string) {
+  if (typeof window !== 'undefined') localStorage.removeItem(key);
+}
+
+function parseJwt(token: string): any {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  const payload = parseJwt(token);
+  if (!payload || !payload.exp) return true;
+  return Date.now() >= payload.exp * 1000;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = getToken('refresh_token');
+  if (!refresh) return null;
+  try {
+    const access = await getAccessTokenByRefresh(refresh);
+    setToken('access_token', access);
+    return access;
+  } catch {
+    removeToken('access_token');
+    removeToken('refresh_token');
+    return null;
+  }
+}
+
 export class ApiClient {
   private baseURL: string;
 
@@ -14,19 +56,31 @@ export class ApiClient {
     this.baseURL = baseURL;
   }
 
+  private async getValidAccessToken(): Promise<string | null> {
+    let access = getToken('access_token');
+    if (!access || isTokenExpired(access)) {
+      access = await refreshAccessToken();
+    }
+    return access;
+  }
+
   private async request<T = any>(
     endpoint: string,
     options: RequestOptions = {},
   ): Promise<T> {
     const { method = 'GET', headers = {}, body, signal } = options;
-
+    let authHeaders = { ...headers };
+    const access = await this.getValidAccessToken();
+    if (access) {
+      authHeaders['Authorization'] = `Bearer ${access}`;
+    }
     const config: RequestInit = {
       method,
       headers: {
         ...(body instanceof FormData
           ? {}
           : { 'Content-Type': 'application/json' }),
-        ...headers,
+        ...authHeaders,
       },
       signal,
     };
