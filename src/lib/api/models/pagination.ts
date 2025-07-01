@@ -11,6 +11,14 @@ export interface PaginatedResponse<T> {
   has_previous: boolean;
 }
 
+// Pagination parameters for Label Studio API responses
+export interface PaginatedLabelStudioResponse<T> {
+  count: number;
+  next?: string;
+  previous?: string;
+  results: T[];
+}
+
 // Pagination parameters for requests
 export interface PaginationParams {
   page?: number;

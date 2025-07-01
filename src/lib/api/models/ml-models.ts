@@ -4,10 +4,12 @@ import { Model } from '@/entities/ml-model';
 import { formatRelativeTime } from '@/utils/time.util';
 import { PaginatedResponse } from './pagination';
 
+export type MLModelType = 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
+
 export interface MLModelResponse {
   id: number;
   name: string;
-  type: 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
+  type: MLModelType;
   version: string;
   created_at: string;
   updated_at: string;
