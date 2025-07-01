@@ -1,7 +1,9 @@
 import { APIClient } from '../client';
 import { APIError } from '../types';
 
-export const getAccessTokenByRefresh = async (refresh: string): Promise<string> => {
+export const getAccessTokenByRefresh = async (
+  refresh: string,
+): Promise<string> => {
   try {
     const response = await APIClient.labelstudio.post<{ access: string }>(
       '/token/refresh/',
