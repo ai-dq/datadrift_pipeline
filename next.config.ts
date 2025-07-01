@@ -15,14 +15,18 @@ const nextConfig: NextConfig = {
         },
         {
           source: '/api/labelstudio/:path*',
-          destination: `http://121.126.210.2:${process.env.LABEL_STUDIO_PORT}/:path*`,
+          destination: `http://121.126.210.2:${process.env.LABEL_STUDIO_PORT}/api/:path*`,
         },
       ];
     } else {
       return [
         {
-          source: '/api/:path*',
-          destination: `http://localhost:${process.env.CORE_API_PORT}/api/:path*`,
+          source: '/api/qocr/:path*',
+          destination: `http://localhost:${process.env.CORE_API_PORT}/v1/:path*`,
+        },
+        {
+          source: '/api/labelstudio/:path*',
+          destination: `http://localhost:${process.env.LABEL_STUDIO_PORT}/api/:path*`,
         },
       ];
     }
