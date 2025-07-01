@@ -13,6 +13,7 @@ export default function ProtectedLayout({
   const router = useRouter();
 
   useEffect(() => {
+    if (process.env.NODE_ENV === 'development') return;
     const accessToken = localStorage.getItem('access_token');
     if (!accessToken) {
       router.replace('/login');
