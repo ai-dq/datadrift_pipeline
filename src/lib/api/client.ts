@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { getCookie } from '../utils/cookie.util';
+import { getAccessTokenByRefresh } from './endpoints/jwt';
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -23,9 +23,7 @@ function removeToken(key: string) {
 
 function parseJwt(token: string): any {
   try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    return JSON.parse(atob(payload));
+    return JSON.parse(atob(token.split('.')[1]));
   } catch {
     return null;
   }
@@ -58,29 +56,32 @@ export class ApiClient {
     this.baseURL = baseURL;
   }
 
+  private async getValidAccessToken(): Promise<string | null> {
+    let access = getToken('access_token');
+    if (!access || isTokenExpired(access)) {
+      access = await refreshAccessToken();
+    }
+    return access;
+  }
+
   private async request<T = any>(
     endpoint: string,
     options: RequestOptions = {},
   ): Promise<T> {
     const { method = 'GET', headers = {}, body, signal } = options;
-    const requestHeaders: Record<string, string> = {
-      ...(body instanceof FormData
-        ? {}
-        : { 'Content-Type': 'application/json' }),
-      ...headers,
-    };
-
-    // Add CSRF token for non-GET requests
-    if (method !== 'GET') {
-      const csrfToken = getCookie('csrftoken');
-      if (csrfToken) {
-        requestHeaders['X-CSRFToken'] = csrfToken;
-      }
+    let authHeaders = { ...headers };
+    const access = await this.getValidAccessToken();
+    if (access) {
+      authHeaders['Authorization'] = `Bearer ${access}`;
     }
-
     const config: RequestInit = {
       method,
-      headers: requestHeaders,
+      headers: {
+        ...(body instanceof FormData
+          ? {}
+          : { 'Content-Type': 'application/json' }),
+        ...authHeaders,
+      },
       signal,
       credentials: 'include', // Crucial for sending cookies cross-origin
     };
