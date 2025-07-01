@@ -7,8 +7,8 @@ export { MLModelVersionResponse } from './models/ml-model-version';
 export type { GetMLModelVersionsResponse as MLModelVersionPageResponse } from './models/ml-model-version';
 
 // LabelStudio projects
-export { ProjectResponse } from './models/labelstudio/projects';
-export type { GetProjectsResponse as ProjectPageResponse } from './models/labelstudio/projects';
+export { ProjectResponse } from './models/projects';
+export type { GetProjectsResponse as ProjectPageResponse } from './models/projects';
 
 // Pagination models
 export type {
@@ -16,3 +16,13 @@ export type {
   PaginationParams,
   PaginatedQueryParams,
 } from './models/pagination';
+
+// Custom APIError class
+export class APIError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'APIError';
+    this.status = status;
+  }
+}

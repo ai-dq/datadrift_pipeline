@@ -1,2 +1,2 @@
 export * from './ml-models';
-export * from './labelstudio/projects';
+export * from './projects';
