@@ -15,7 +15,9 @@ export function useApiData<TResponse, TEntity>({
   /**
    * Function that fetches data from the API
    */
-  fetchFn: () => Promise<{ items: TResponse[] } | TResponse[]>;
+  fetchFn: () => Promise<
+    { items: TResponse[] } | { results: TResponse[] } | TResponse[]
+  >;
   /**
    * Function that transforms API response to UI entity
    */
