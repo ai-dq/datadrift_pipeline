@@ -66,7 +66,11 @@ export function useApiData<TResponse, TEntity>({
       }
 
       // Handle both array responses and paginated responses with items property
-      const items = Array.isArray(response) ? response : response.items;
+      const items = Array.isArray(response)
+        ? response
+        : 'items' in response
+          ? response.items
+          : response.results;
 
       const transformedData = items.map(transformFn);
       setData(transformedData);
