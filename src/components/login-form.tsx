@@ -34,7 +34,6 @@ export function LoginForm({
       }
 
       try {
-        await directLogin(email, password);
         await getTokensByCredentials(email, password);
         window.location.href = '/'; // 예: 메인 페이지로 리디렉션
       } catch (err) {
