@@ -14,29 +14,6 @@ import { Button } from "../../components";
 
 const PROJECTS_TO_SHOW = 10;
 
-const resources = [
-  {
-    title: "Documentation",
-    url: "https://labelstud.io/guide/",
-  },
-  {
-    title: "API Documentation",
-    url: "https://api.labelstud.io/api-reference/introduction/getting-started",
-  },
-  {
-    title: "Release Notes",
-    url: "https://labelstud.io/learn/categories/release-notes/",
-  },
-  {
-    title: "LabelStud.io Blog",
-    url: "https://labelstud.io/blog/",
-  },
-  {
-    title: "Slack Community",
-    url: "https://slack.labelstud.io",
-  },
-];
-
 const actions = [
   {
     title: "Create Project",
@@ -143,9 +120,6 @@ export const HomePage: Page = () => {
               </div>
             ) : null}
           </SimpleCard>
-        </section>
-        <section className="flex flex-col gap-6">
-          <HeidiTips collection="projectSettings" />
         </section>
       </div>
       {creationDialogOpen && <CreateProject onClose={() => setCreationDialogOpen(false)} />}

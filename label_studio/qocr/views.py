@@ -8,7 +8,7 @@ from drf_yasg import openapi
 
 # Label Studio uses drf-yasg for API documentation
 from drf_yasg.utils import swagger_auto_schema
-from mineru.utils.enum_class import ModelInvokeConfig as MinervuModelInvokeConfig
+from mineru.utils.enum_class import ModelInvokeConfig as MineruModelInvokeConfig
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -70,7 +70,7 @@ SUPPORTED_MIME_TYPES = {
 
 def convert_to_mineru_config(config):
     """Convert local ModelInvokeConfig to mineru ModelInvokeConfig format"""
-    return MinervuModelInvokeConfig.model_validate(
+    return MineruModelInvokeConfig.model_validate(
         {
             "model_type": config["type"],
             "model_subtype": config.get("sub_type"),
