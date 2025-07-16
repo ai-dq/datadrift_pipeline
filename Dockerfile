@@ -66,15 +66,9 @@ WORKDIR /qocr-build
 # Copy q-ocr/core source
 COPY q-ocr/core .
 
-# Remove the original mineru directory and rename mineru-pyc to mineru
-RUN rm -rf mineru && mv mineru-pyc mineru
-
-# Update pyproject.toml to reference the renamed directory
-RUN sed -i 's/mineru-pyc/mineru/g' pyproject.toml
-
 # Build the qocr-core package as wheel (only .pyc files will be included)
 RUN --mount=type=cache,target=$UV_CACHE_DIR,sharing=locked \
-    uv build --wheel --out-dir /wheels
+    ./scripts/build.sh /wheels
 
 ################################ Stage: venv-builder (prepare the virtualenv)
 FROM qocr-base:latest AS venv-builder
