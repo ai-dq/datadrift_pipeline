@@ -210,8 +210,8 @@ const CREATE_API_BASE_URL = (path: string) => {
 };
 
 export const APIClient = {
-  direct: new ApiClient(CREATE_API_BASE_URL('/')),
-  labelstudio: new ApiClient(CREATE_API_BASE_URL('/api')),
+  direct: new ApiClient('http://121.126.210.2/labelstudio'),
+  labelstudio: new ApiClient('http://121.126.210.2/labelstudio/api'),
 };
 
 // React Hook for API calls with loading state

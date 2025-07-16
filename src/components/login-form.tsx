@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { directLogin, getAuthPrerequisits } from '@/lib/api/endpoints/direct';
 import { getTokensByCredentials } from '@/lib/api/endpoints/jwt';
-import { directLogin, getMiddlewareToken } from '@/lib/api/endpoints/direct';
+import { directLogin } from '@/lib/api/endpoints/direct';
 
 export function LoginForm({
   className,
@@ -34,7 +34,7 @@ export function LoginForm({
       }
 
       try {
-        await directLogin(email, password, csrfMiddlewareToken);
+        await directLogin(email, password);
         await getTokensByCredentials(email, password);
         window.location.href = '/'; // 예: 메인 페이지로 리디렉션
       } catch (err) {

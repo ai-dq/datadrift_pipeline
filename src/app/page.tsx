@@ -1,12 +1,28 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { getCurrentUser } from '@/lib/api/endpoints/users';
+import { getCookie } from '@/lib/utils/cookie.util';
+
 export default function RootPage() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Loading...</p>
-      </div>
-    </div>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      const csrfToken = getCookie('csrftoken');
+
+      if (!csrfToken) {
+        console.warn('User not authenticated, redirecting to login');
+        router.replace('/login');
+      }
+
+      // 성공 시 대시보드로 이동
+      router.replace('/dashboard');
+    };
+
+    checkLoginStatus();
+  }, [router]);
+
+  return null;
 }
