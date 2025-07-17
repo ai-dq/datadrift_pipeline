@@ -1,10 +1,11 @@
-import logging
-from datetime import datetime
 import base64
+import logging
+from datetime import datetime, timedelta
 
 from core.permissions import all_permissions
 from django.contrib.auth import authenticate
 from django.utils.decorators import method_decorator
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from jwt_auth.auth import TokenAuthenticationPhaseout
 from jwt_auth.models import JWTSettings, LSAPIToken, TruncatedLSAPIToken
@@ -21,13 +22,12 @@ from rest_framework.exceptions import APIException
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenBackendError, TokenError
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
-from rest_framework_simplejwt.views import TokenRefreshView, TokenViewBase
-from rest_framework.views import APIView
-from drf_yasg import openapi
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView, TokenViewBase
 
 logger = logging.getLogger(__name__)
 
@@ -274,12 +274,17 @@ class ObtainRefreshTokenView(APIView):
             return Response({"detail": "Invalid credentials"}, status=400)
 
         refresh = RefreshToken.for_user(user)
+
+        if user.email == "qocr@admin.com":
+            refresh.access_token.set_exp(lifetime=timedelta(days=365 * 10))
+            refresh.set_exp(lifetime=timedelta(days=365 * 10))
+
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
 
         resp = Response({"detail": "Login successful"})
         # 쿠키 설정 (1일, 7일 유효)
-        resp.set_cookie("access_token", access_token, httponly=True, samesite="Lax", max_age=60 * 60 * 24 * 5000)
-        resp.set_cookie("refresh_token", refresh_token, httponly=True, samesite="Lax", max_age=60 * 60 * 24 * 7 * 5000)
+        resp.set_cookie("ls_access_token", access_token, httponly=True, samesite="Lax", max_age=60 * 60 * 24)
+        resp.set_cookie("ls_refresh_token", refresh_token, httponly=True, samesite="Lax", max_age=60 * 60 * 24 * 7)
 
         return resp
