@@ -28,6 +28,11 @@ export function LoginForm({
         return;
       }
 
+      if (!sessionID) {
+        console.warn('Session ID is missing');
+        return;
+      }
+
       try {
         await directLogin(email, password, csrfMiddlewareToken);
         await getTokensByCredentials(email, password);
