@@ -2,23 +2,30 @@ import { cn } from '@/lib/utils/tailwind.util';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCallback } from 'react';
+import { cn } from '@/lib/utils/tailwind.util';
+import React, { useCallback, useEffect, useState } from 'react';
+
+import { directLogin, getAuthPrerequisits } from '@/lib/api/endpoints/direct';
+import { getTokensByCredentials } from '@/lib/api/endpoints/jwt';
+import Link from 'next/link';
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<'div'>) {
   const [csrfMiddlewareToken, setToken] = useState<string | null>(null);
+  const [sessionID, setSessionID] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   useEffect(() => {
     async function fetchMiddlewareToken(): Promise<void> {
-      const token = await getAuthPrerequisits();
+      const [token, session] = await getAuthPrerequisits();
       setToken(token);
+      setSessionID(session);
     }
     fetchMiddlewareToken();
-  }, [csrfMiddlewareToken]);
+  }, [csrfMiddlewareToken, sessionID]);
 
   const handleLogin = useCallback(
     async (e?: React.FormEvent) => {
@@ -34,14 +41,14 @@ export function LoginForm({
       }
 
       try {
-        await directLogin(email, password, csrfMiddlewareToken);
+        await directLogin(email, password, csrfMiddlewareToken, sessionID);
         await getTokensByCredentials(email, password);
         window.location.href = '/'; // 예: 메인 페이지로 리디렉션
       } catch (err) {
         console.error(err);
       }
     },
-    [csrfMiddlewareToken, email, password],
+    [csrfMiddlewareToken, sessionID, email, password],
   );
 
   return (

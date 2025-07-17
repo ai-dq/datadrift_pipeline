@@ -70,12 +70,8 @@ export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
   // Handle Label Studio API routes
-  if (pathname.startsWith('/labelstudio/')) {
-    if (pathname.startsWith('/labelstudio/api')) {
-      return handleAPIRoutes(request);
-    } else {
-      return NextResponse.next();
-    }
+  if (pathname.startsWith('/labelstudio/api/')) {
+    return handleAPIRoutes(request);
   }
 
   // Handle authentication for web routes
