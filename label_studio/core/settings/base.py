@@ -393,6 +393,13 @@ SWAGGER_SETTINGS = {
     "DEFAULT_INFO": "core.urls.open_api_info",
 }
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+}
+
 SENTRY_DSN = get_env("SENTRY_DSN", None)
 SENTRY_RATE = float(get_env("SENTRY_RATE", 0.02))
 SENTRY_ENVIRONMENT = get_env("SENTRY_ENVIRONMENT", "stage.opensource")
