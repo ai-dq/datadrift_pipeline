@@ -24,14 +24,12 @@ export const directLogin = async (
   csrfMiddlewareToken: string,
 ): Promise<string> => {
   try {
-    // Create form data for Django form submission
-    const formData = new FormData();
-    formData.append('csrfmiddlewaretoken', csrfMiddlewareToken);
-    formData.append('email', email);
-    formData.append('password', password);
-    formData.append('persist_session', 'on');
-
-    const _ = await APIClient.direct.post<void>('/user/login/', formData);
+    const _ = await APIClient.direct.post<void>('/user/login', {
+      csrfmiddlewaretoken: csrfMiddlewareToken,
+      email: email,
+      password: password,
+      persist_session: 'on',
+    });
 
     const csrfToken = getCookie('csrftoken');
     if (!csrfToken) {

@@ -7,10 +7,37 @@ import { useCallback } from 'react';
 export function LoginForm({
   className,
   ...props
-}: React.ComponentProps<'form'>) {
-  const handleLogin = useCallback(() => {
-    console.log('Login requested');
-  }, []);
+}: React.ComponentProps<'div'>) {
+  const [csrfMiddlewareToken, setToken] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    async function fetchMiddlewareToken(): Promise<void> {
+      const token = await getAuthPrerequisits();
+      setToken(token);
+    }
+    fetchMiddlewareToken();
+  }, [csrfMiddlewareToken]);
+
+  const handleLogin = useCallback(
+    async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      if (!csrfMiddlewareToken) {
+        console.warn('CSRF middleware token is missing');
+        return;
+      }
+
+      try {
+        await directLogin(email, password, csrfMiddlewareToken);
+        await getTokensByCredentials(email, password);
+        window.location.href = '/'; // 예: 메인 페이지로 리디렉션
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    [csrfMiddlewareToken, email, password],
+  );
 
   return (
     <form className={cn('flex flex-col gap-6', className)} {...props}>
