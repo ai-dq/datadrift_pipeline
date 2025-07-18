@@ -31,9 +31,7 @@ export const directLogin = async (
     formData.append('password', password);
     formData.append('persist_session', 'on');
 
-    const _ = await APIClient.direct.post<void>('/user/login/', {
-      data: formData,
-    });
+    const _ = await APIClient.direct.post<void>('/user/login/', formData);
 
     const csrfToken = getCookie('csrftoken');
     if (!csrfToken) {
