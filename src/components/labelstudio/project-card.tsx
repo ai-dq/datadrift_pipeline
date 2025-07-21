@@ -1,80 +1,57 @@
-import ModelTypeBadge from '@/components/model-type-badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Project } from '@/entities/labelstudio';
-import { Lightbulb, List, ListChecks } from 'lucide-react';
-import { useState } from 'react';
-import { ProjectCardDropdown } from './project-card-dropdown';
-import ProjectEditDialog from './project-edit-dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '../ui/dropdown-menu';
+import { Button } from '../ui/button';
+import { ModelType } from '@/entities/ml-model';
 
-export function ProjectCard({
-  project,
-  onClick,
-  onEditSubmit,
-}: {
-  project: Project;
-  onClick?: (project: Project) => void;
-  onEditSubmit?: (project: Project) => Promise<Project | null>;
-}) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+export function ProjectCard({ project }: { project: Project }) {
   return (
-    <>
-      <Card
-        className="hover:shadow-md transition-shadow cursor-pointer"
-        onClick={() => onClick?.(project)}
-      >
-        <CardHeader>
-          <div className="flex justify-between w-full">
-            <div className="flex gap-4 items-center">
-              <div className="w-12 h-12 rounded-full bg-gray-300 opacity-90 flex items-center justify-center text-white font-semibold font-mono text-xl">
-                {project.title.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex flex-col gap-y-0.5 items-start">
-                <CardTitle className="text-base">{project.title}</CardTitle>
-                <ModelTypeBadge type={project.type} />
-              </div>
-            </div>
-            <ProjectCardDropdown onEdit={() => setIsDialogOpen(true)} />
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader>
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
+            {project.title.charAt(0)}
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex flex-row gap-2 items-center">
-              <ListChecks className="size-4" />
-              <span>{project.finishedTasksCount}</span>
-              <span>/</span>
-              <span>{project.totalTasksCount}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex flex-row gap-2 items-center">
-                <List className="size-4" />0
-              </div>
-              <div className="flex flex-row gap-2 items-center">
-                <Lightbulb className="size-4" />0
-              </div>
-            </div>
+          <div className="flex flex-col gap-2 items-start">
+            <CardTitle className="text-base">{project.title}</CardTitle>
+            <Badge variant="secondary">
+              {ModelType.presentationName(project.type)}
+            </Badge>
           </div>
-        </CardContent>
-      </Card>
-      <ProjectEditDialog
-        project={project}
-        open={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        onSubmit={async (e) => {
-          if (onEditSubmit) {
-            const result = await onEditSubmit({
-              ...project,
-              title: e.title,
-              type: e.type,
-            });
-
-            // Close the dialog if the update was successful
-            if (result) {
-              setIsDialogOpen(false);
-            }
-          }
-        }}
-      />
-    </>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">{project.title}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary">{project.type ?? 'Select'}</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>
+                Select model type this project uses
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value="dfgfdgd" onValueChange={() => {}}>
+                {ModelType.allCases().map((type) => (
+                  <DropdownMenuRadioItem key={type} value={type}>
+                    {ModelType.presentationName(type)}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
