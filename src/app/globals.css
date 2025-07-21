@@ -759,7 +759,7 @@ body {
   .sidebar h5,
   .sidebar h6 {
     color: var(--color-neutral-content) !important;
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 600;
     margin: 0 0 var(--spacing-300) 0;
     padding: 0 var(--spacing-400);
@@ -771,12 +771,12 @@ body {
     display: flex;
     align-items: center;
     gap: var(--spacing-300);
-    padding: var(--spacing-300) var(--spacing-400);
+    padding: var(--spacing-400) var(--spacing-500);
     margin: 0 var(--spacing-200);
     border-radius: var(--corner-radius-small);
     color: var(--color-neutral-content) !important;
     text-decoration: none;
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 500;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
