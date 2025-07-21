@@ -4,7 +4,7 @@ import { ProjectCardCollection } from '@/components/labelstudio/project-card-col
 import { useProjects } from '@/hooks/network/projects';
 
 export default function LabelStudioPage() {
-  const { data } = useProjects();
+  const { data: projects } = useProjects();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -17,7 +17,7 @@ export default function LabelStudioPage() {
       </div>
 
       <div className="mb-8">
-        <ProjectCardCollection projects={data} />
+        <ProjectCardCollection projects={projects} />
       </div>
     </div>
   );
