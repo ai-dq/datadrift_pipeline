@@ -1,55 +1,47 @@
 import { Project } from '@/entities/labelstudio';
+import { Lightbulb, List, ListChecks } from 'lucide-react';
+import ModelTypeBadge from '../model-type-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from '../ui/dropdown-menu';
-import { Button } from '../ui/button';
-import { ModelType } from '@/entities/ml-model';
 
-export function ProjectCard({ project }: { project: Project }) {
+export function ProjectCard({
+  project,
+  onClick,
+}: {
+  project: Project;
+  onClick?: (project: Project) => void;
+}) {
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card
+      className="hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => onClick?.(project)}
+    >
       <CardHeader>
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-            {project.title.charAt(0)}
+          <div className="w-12 h-12 rounded-full bg-gray-300 opacity-90 flex items-center justify-center text-white font-semibold font-mono text-xl">
+            {project.title.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col gap-2 items-start">
             <CardTitle className="text-base">{project.title}</CardTitle>
-            <Badge variant="secondary">
-              {ModelType.presentationName(project.type)}
-            </Badge>
+            <ModelTypeBadge type={project.type} />
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">{project.title}</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary">{project.type ?? 'Select'}</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLabel>
-                Select model type this project uses
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup value="dfgfdgd" onValueChange={() => {}}>
-                {ModelType.allCases().map((type) => (
-                  <DropdownMenuRadioItem key={type} value={type}>
-                    {ModelType.presentationName(type)}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex flex-row gap-2 items-center">
+            <ListChecks className="size-4" />
+            <span>{project.finishedTasksCount}</span>
+            <span>/</span>
+            <span>{project.totalTasksCount}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-row gap-2 items-center">
+              <List className="size-4" />0
+            </div>
+            <div className="flex flex-row gap-2 items-center">
+              <Lightbulb className="size-4" />0
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
