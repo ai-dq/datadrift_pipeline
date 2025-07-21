@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CopyPlus, Edit, Ellipsis, Trash2 } from 'lucide-react';
 
-export function ProjectCardDropdown({ onEdit }: { onEdit?: () => void }) {
+export function ProjectCardDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -26,7 +26,7 @@ export function ProjectCardDropdown({ onEdit }: { onEdit?: () => void }) {
         <DropdownMenuItem
           onClick={(e) => {
             e.stopPropagation();
-            onEdit?.();
+            console.log('Edit');
           }}
         >
           <Edit className="mr-2 h-4 w-4" />
