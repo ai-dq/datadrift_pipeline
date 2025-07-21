@@ -39,7 +39,7 @@ export const selectModelVersion = async (
     const response = await APIClient.labelstudio.post<MLModelResponse>(
       `${ML_MODELS_PREFIX}/${modelId}/select`,
       {
-        version,
+        data: { version },
       },
     );
     return response;

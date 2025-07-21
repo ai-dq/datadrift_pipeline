@@ -6,10 +6,15 @@ export const directLogin = async (
   password: string,
 ): Promise<string> => {
   try {
-    const _ = await APIClient.direct.post<void>('/user/login', {
-      email: email,
-      password: password,
-      persist_session: 'on',
+    // Create form data for Django form submission
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', csrfMiddlewareToken);
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('persist_session', 'on');
+
+    const _ = await APIClient.direct.post<void>('/user/login/', {
+      data: formData,
     });
 
     const csrfToken = getCookie('csrftoken');
