@@ -29,6 +29,28 @@ export function ProjectCardCollection({ projects }: { projects: Project[] }) {
             {project.title}
           </Badge>
           <span className="text-sm text-muted-foreground">{project.title}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary">{project.type ?? 'Select'}</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>
+                Select model type this project uses
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value="dfgfdgd" onValueChange={() => {}}>
+                <DropdownMenuRadioItem value="dfgdsg">
+                  asfsafasf
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="sdfgsdfgdf">
+                  asfasfsafas
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="dfgdfgdf">
+                  fsafasfsafa
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>

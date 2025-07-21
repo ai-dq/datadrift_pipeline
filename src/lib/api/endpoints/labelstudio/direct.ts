@@ -1,5 +1,5 @@
 import { getCookie } from '@/lib/utils/cookie.util';
-import { APIClient, ApiError } from '../client';
+import { APIClient, ApiError } from '../../client';
 
 export const directLogin = async (
   email: string,
