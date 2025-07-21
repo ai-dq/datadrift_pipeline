@@ -1,7 +1,8 @@
+import ModelTypeBadge from '@/components/model-type-badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Project } from '@/entities/labelstudio';
 import { Lightbulb, List, ListChecks } from 'lucide-react';
-import ModelTypeBadge from '../model-type-badge';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { ProjectCardDropdown } from './project-card-dropdown';
 
 export function ProjectCard({
   project,
@@ -16,14 +17,17 @@ export function ProjectCard({
       onClick={() => onClick?.(project)}
     >
       <CardHeader>
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-full bg-gray-300 opacity-90 flex items-center justify-center text-white font-semibold font-mono text-xl">
-            {project.title.charAt(0).toUpperCase()}
+        <div className="flex justify-between w-full">
+          <div className="flex gap-4 items-center">
+            <div className="w-12 h-12 rounded-full bg-gray-300 opacity-90 flex items-center justify-center text-white font-semibold font-mono text-xl">
+              {project.title.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex flex-col gap-2 items-start">
+              <CardTitle className="text-base">{project.title}</CardTitle>
+              <ModelTypeBadge type={project.type} />
+            </div>
           </div>
-          <div className="flex flex-col gap-2 items-start">
-            <CardTitle className="text-base">{project.title}</CardTitle>
-            <ModelTypeBadge type={project.type} />
-          </div>
+          <ProjectCardDropdown />
         </div>
       </CardHeader>
       <CardContent>
