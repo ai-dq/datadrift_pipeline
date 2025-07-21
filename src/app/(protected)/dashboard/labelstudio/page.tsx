@@ -17,7 +17,12 @@ export default function LabelStudioPage() {
       </div>
 
       <div className="mb-8">
-        <ProjectCardCollection projects={projects} />
+        <ProjectCardCollection
+          projects={projects}
+          onProjectClick={(project) => {
+            console.log(`${project.title}`);
+          }}
+        />
       </div>
     </div>
   );
