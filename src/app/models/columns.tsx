@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge';
+import ModelTypeBadge from '@/components/model-type-badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Model, ModelType } from '@/entities/ml-model';
 import { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowUpDown,
@@ -19,60 +20,6 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-export type Model = {
-  id: string;
-  name: string;
-  type: 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
-  version: string;
-  updatedAt: string;
-  description?: string;
-};
-
-const MODEL_TYPES = [
-  { value: 'layout', label: 'Layout Detection' },
-  { value: 'ocrcls', label: 'OCR Classification' },
-  { value: 'ocrrec', label: 'OCR Recognition' },
-  { value: 'ocrdet', label: 'OCR Detection' },
-  { value: 'tabrec', label: 'Table Recognition' },
-] as const;
-
-const getTypeBadge = (type: Model['type']) => {
-  switch (type) {
-    case 'layout':
-      return (
-        <Badge className="font-bold bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-          Layout Detection
-        </Badge>
-      );
-    case 'ocrcls':
-      return (
-        <Badge className="font-bold bg-lime-100 text-lime-800 hover:bg-lime-200">
-          OCR Classification
-        </Badge>
-      );
-    case 'ocrrec':
-      return (
-        <Badge className="font-bold bg-green-100 text-green-800 hover:bg-green-200">
-          OCR Recognition
-        </Badge>
-      );
-    case 'ocrdet':
-      return (
-        <Badge className="font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
-          OCR Detection
-        </Badge>
-      );
-    case 'tabrec':
-      return (
-        <Badge className="font-bold bg-indigo-100 text-indigo-800 hover:bg-indigo-200">
-          Table
-        </Badge>
-      );
-    default:
-      return <Badge variant="secondary">{type}</Badge>;
-  }
-};
 
 // Component to handle type filtering
 const TypeFilterCell = ({ column }: { column: any }) => {
@@ -126,18 +73,23 @@ const TypeFilterCell = ({ column }: { column: any }) => {
             )}
           </div>
           <div className="space-y-2">
-            {MODEL_TYPES.map((type) => (
-              <div key={type.value} className="flex items-center space-x-2">
+            {ModelType.allCases().map((type) => (
+              <div key={type} className="flex items-center space-x-2">
                 <Checkbox
-                  id={type.value}
-                  checked={selectedTypes.includes(type.value)}
-                  onCheckedChange={() => handleTypeToggle(type.value)}
+                  id={type}
+                  checked={selectedTypes.includes(type)}
+                  onCheckedChange={() => handleTypeToggle(type)}
                 />
+<<<<<<< HEAD:src/app/models/columns.tsx
                 <label
                   htmlFor={type.value}
                   className="text-sm font-normal cursor-pointer flex-1"
                 >
                   {type.label}
+=======
+                <label htmlFor={type} className="cursor-pointer flex-1">
+                  <ModelTypeBadge type={type} />
+>>>>>>> e742211ff (♻️ Replace model type badge to reusable component):src/app/(protected)/dashboard/models/columns.tsx
                 </label>
               </div>
             ))}
@@ -233,10 +185,7 @@ export const columns: ColumnDef<Model>[] = [
   {
     accessorKey: 'type',
     header: ({ column }) => <TypeFilterCell column={column} />,
-    cell: ({ row }) => {
-      const type = row.getValue('type') as Model['type'];
-      return <div>{getTypeBadge(type)}</div>;
-    },
+    cell: ({ row }) => <ModelTypeBadge type={row.original.type} />,
     filterFn: (row, id, value) => {
       if (!value || value.length === 0) return true;
       return value.includes(row.getValue(id));
