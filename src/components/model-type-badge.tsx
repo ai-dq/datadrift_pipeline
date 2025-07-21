@@ -32,14 +32,24 @@ const typeStyleMap: Record<
   },
 };
 
-export default function ModelTypeBadge({ type }: { type: ModelType }) {
+type HoverStyle = 'plain' | 'highlight';
+
+export default function ModelTypeBadge({
+  type,
+  hover = 'highlight',
+}: {
+  type: ModelType;
+  hover?: HoverStyle;
+}) {
   const style = typeStyleMap[type] ?? {
     bg: 'bg-gray-500',
     text: 'text-gray-50',
     hover: 'hover:bg-gray-600',
   };
   return (
-    <Badge className={`font-bold ${style.bg} ${style.text} ${style.hover}`}>
+    <Badge
+      className={`font-bold ${style.bg} ${style.text} ${hover === 'highlight' ? style.hover : ''}`}
+    >
       {ModelType.presentationName(type)}
     </Badge>
   );
