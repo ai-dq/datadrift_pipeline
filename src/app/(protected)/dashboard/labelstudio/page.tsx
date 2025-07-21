@@ -2,8 +2,10 @@
 
 import { ProjectCardCollection } from '@/components/labelstudio/project-card-collection';
 import { useProjects } from '@/hooks/network/projects';
+import { useRouter } from 'next/navigation';
 
 export default function LabelStudioPage() {
+  const router = useRouter();
   const { data: projects } = useProjects();
 
   return (
@@ -16,11 +18,12 @@ export default function LabelStudioPage() {
         </p>
       </div>
 
+      {/* Projects Collection */}
       <div className="mb-8">
         <ProjectCardCollection
           projects={projects}
           onProjectClick={(project) => {
-            console.log(`${project.title}`);
+            router.push(`/labelstudio/projects/${project.id}`);
           }}
         />
       </div>
