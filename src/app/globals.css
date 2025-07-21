@@ -1,5 +1,22 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import 'tailwindcss/utilities';
+@import './themes.css';
 
+@theme {
+  --color-primary: #5470d6;
+  --color-primary-foreground: #f8fafc;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+}
+
+/* Label Studio Design Tokens - Light Theme */
 :root {
   /* Breakpoints */
   --breakpoint-3xl: 1600px;
@@ -67,6 +84,7 @@
   --color-code-number: var(--color-neutral-content-subtler);
   --color-selection: var(--color-primary-emphasis);
   --color-selection-foreground: var(--color-primary-content);
+
   /* Core Label Studio color palette */
   --color-sand-000: rgb(253 253 252);
   --color-sand-100: rgb(249 248 246);
@@ -87,9 +105,9 @@
   --color-grape-300: rgb(153 171 245);
   --color-grape-400: rgb(109 135 241);
   --color-grape-500: rgb(97 122 218);
-  --color-grape-600: rgb(87 108 193);
-  --color-grape-700: rgb(76 95 169);
-  --color-grape-800: rgb(55 68 122);
+  --color-grape-600: rgb(103 127 214);
+  --color-grape-700: rgb(86 111 207);
+  --color-grape-800: rgb(67 88 181);
   --color-grape-900: rgb(43 54 96);
   --color-grape-950: rgb(17 22 38);
 
@@ -152,7 +170,7 @@
 
   /* Typography tokens */
   --font-family-base: 'Figtree', system-ui, sans-serif;
-  --font-family-mono: 'IBMPlexMono', 'Courier New', monospace;
+  --font-family-mono: 'JetBrains Mono', monospace;
 
   /* Spacing tokens */
   --spacing-0: 0;
@@ -225,6 +243,8 @@
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
     font-family: var(--font-family-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Typography following Label Studio patterns */
@@ -234,42 +254,47 @@
   h4,
   h5,
   h6 {
-    font-weight: 500;
+    font-weight: 700;
     margin: 0;
     color: inherit !important;
     font-family: var(--font-family-headings);
+    letter-spacing: -0.02em;
   }
 
   h1 {
-    font-size: 2em;
-  }
-
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  } /* 36px */
   h2 {
-    font-size: 1.5em;
-  }
-
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  } /* 30px */
   h3 {
-    font-size: 1.17em;
-  }
-
+    font-size: 1.5rem;
+    line-height: 2rem;
+  } /* 24px */
   h4 {
-    font-size: 1em;
-  }
-
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  } /* 20px */
   h5 {
-    font-size: 0.83em;
-  }
-
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  } /* 18px */
   h6 {
-    font-size: 0.67em;
-  }
+    font-size: 1rem;
+    line-height: 1.5rem;
+  } /* 16px */
 
   a {
-    color: var(--color-neutral-content);
+    color: var(--color-primary-content); /* Primary 색상을 링크에 적용 */
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
   }
 
   a:hover {
-    color: var(--color-neutral-content-subtle);
+    text-decoration: underline; /* 호버 시 밑줄 표시 */
+    color: var(--color-primary-content-hover);
   }
 
   @supports (font: -apple-system-body) and (-webkit-appearance: none) {
