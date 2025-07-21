@@ -142,7 +142,7 @@ const ModelActionsCell = ({ model }: { model: Model }) => {
   const router = useRouter();
 
   const handleDetailClick = () => {
-    router.push(`/models/${model.id}`);
+    router.push(`/dashboard/models/${model.id}`);
   };
 
   const handleDeleteClick = () => {
