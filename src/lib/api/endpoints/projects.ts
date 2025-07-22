@@ -1,5 +1,9 @@
 import { APIClient } from '../client';
-import { ProjectPageResponse, APIError } from '../types';
+import {
+  UpdateProjectRequest,
+  UpdateProjectResponse,
+} from '../models/projects';
+import { APIError, ProjectPageResponse } from '../types';
 
 export const getProjects = async (): Promise<ProjectPageResponse> => {
   try {
@@ -26,5 +30,24 @@ export const getProjects = async (): Promise<ProjectPageResponse> => {
     console.error('Failed to getProjects:', error);
     if (error instanceof APIError) throw error;
     throw new APIError(0, 'Failed to get label studio projects');
+  }
+};
+
+export const updateProject = async (
+  id: string,
+  project: UpdateProjectRequest,
+): Promise<UpdateProjectResponse> => {
+  try {
+    const response = await APIClient.labelstudio.patch<UpdateProjectResponse>(
+      `/projects/${id}`,
+      {
+        data: project,
+      },
+    );
+    return response;
+  } catch (error) {
+    console.error('Failed to updateProject:', error);
+    if (error instanceof APIError) throw error;
+    throw new APIError(0, 'Failed to update label studio project');
   }
 };
