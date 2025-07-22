@@ -1,12 +1,37 @@
 'use client';
 
 import { ProjectCardCollection } from '@/components/labelstudio/project-card-collection';
-import { useProjects } from '@/hooks/network/projects';
+import { Project } from '@/entities/labelstudio';
+import { useProjects, useUpdateProject } from '@/hooks/network/projects';
 import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 
 export default function LabelStudioPage() {
   const router = useRouter();
-  const { data: projects } = useProjects();
+  const { data: projects, refetch } = useProjects();
+  const { requestFn: updateProject } = useUpdateProject();
+
+  const handleProjectEdit = useCallback(
+    async (project: Project): Promise<Project | null> => {
+      try {
+        const response = await updateProject(project, {
+          title: project.title,
+          ml_model_type: project.type,
+        });
+
+        if (response) {
+          // Refetch the projects list to get the updated data
+          await refetch();
+          return response;
+        }
+        return null;
+      } catch (error) {
+        console.error('Failed to update project:', error);
+        return null;
+      }
+    },
+    [updateProject, refetch],
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -25,6 +50,7 @@ export default function LabelStudioPage() {
           onProjectClick={(project) => {
             router.push(`/dashboard/label/${project.id}`);
           }}
+          onProjectEdit={handleProjectEdit}
         />
       </div>
     </div>
