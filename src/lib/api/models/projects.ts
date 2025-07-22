@@ -30,3 +30,41 @@ export namespace ProjectResponse {
     };
   }
 }
+
+/**
+ * Update Project 요청 스키마
+ */
+export interface UpdateProjectRequest {
+  title?: string;
+  description?: string;
+  label_config?: string;
+  expert_instruction?: string;
+  show_instruction?: boolean;
+  show_skip_button?: boolean;
+  enable_empty_annotation?: boolean;
+  show_annotation_history?: boolean;
+  reveal_preannotations_interactively?: boolean;
+  show_collab_predictions?: boolean;
+  maximum_annotations?: number;
+  color?: string;
+  control_weights?: Record<string, any>;
+  workspace?: number;
+  model_version?: string;
+  ml_model_type?: string;
+}
+
+export namespace UpdateProjectRequest {
+  export function fromEntity(entity: Project): UpdateProjectRequest {
+    return {
+      title: entity.title,
+      ml_model_type: entity.type.toString(),
+    };
+  }
+}
+
+/**
+ * Update Project 응답 스키마
+ *
+ * {@link UpdateProjectRequest}와 동일한 스키마 사용
+ * */
+export interface UpdateProjectResponse extends UpdateProjectRequest {}
