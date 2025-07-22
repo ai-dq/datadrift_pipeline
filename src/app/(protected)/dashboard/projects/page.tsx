@@ -48,7 +48,7 @@ export default function LabelStudioPage() {
         <ProjectCardCollection
           projects={projects}
           onProjectClick={(project) => {
-            router.push(`/dashboard/label/${project.id}`);
+            router.push(`/dashboard/projects/${project.id}`);
           }}
           onProjectEdit={handleProjectEdit}
         />

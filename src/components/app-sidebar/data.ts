@@ -24,7 +24,7 @@ export const services: ServiceItem[] = [
 export const menuItems: MenuItem[] = [
   {
     title: 'Label Studio',
-    url: '/dashboard/label',
+    url: '/dashboard/projects',
     icon: Settings2,
     isActive: true,
     children: [
