@@ -5,12 +5,11 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils/tailwind.util';
 import React, { useCallback, useEffect, useState } from 'react';
 
+import { getTokensByCredentials } from '@/lib/api/endpoints/jwt';
 import {
   directLogin,
   getAuthPrerequisits,
 } from '@/lib/api/endpoints/labelstudio/direct';
-import { getTokensByCredentials } from '@/lib/api/endpoints/jwt';
-import Link from 'next/link';
 
 export function LoginForm({
   className,
@@ -25,42 +24,44 @@ export function LoginForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
-            <div className="grid gap-6">
-              <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-3">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+            <div className="grid gap-8">
+              <div className="flex flex-col gap-3">
+                <div className="grid gap-3">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="grid gap-3">
+                  <div className="flex items-center">
+                    <Label htmlFor="password">Password</Label>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
               </div>
-              <Button type="submit" className="w-full cursor-pointer">
-                Login
-              </Button>
+              <div>
+                <Button
+                  type="submit"
+                  className="w-full h-10 font-extrabold rounded-4xl cursor-pointer"
+                >
+                  Log in
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>
       </Card>
-      {/* <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-        By clicking continue, you agree to our{' '}
-        <Link href="#">Terms of Service</Link> and{' '}
-        <Link href="#">Privacy Policy</Link>.
-      </div> */}
     </div>
   );
 }
