@@ -108,6 +108,6 @@
   --color-sidebar-primary-foreground: oklch(0.379 0.146 265.522);
   --color-sidebar-accent: oklch(0.274 0.006 286.033);
   --color-sidebar-accent-foreground: oklch(0.985 0 0);
-  --color-sidebar-border: ooklch(1 0 0 / 10%);
+  --color-sidebar-border: oklch(1 0 0 / 10%);
   --color-sidebar-ring: oklch(0.488 0.243 264.376);
 }
