@@ -1,54 +1,35 @@
-import {
-  BookOpen,
-  Bot,
-  LifeBuoy,
-  Send,
-  Settings2,
-  SquareTerminal,
-} from 'lucide-react';
+import { BookOpen, BrainCircuit, Database, SquareTerminal } from 'lucide-react';
 
 export const data = {
   user: {
-    name: 'shadcn',
-    email: 'm@example.com',
+    name: 'admin',
+    email: 'qocr@admin.com',
     avatar: '/next.svg',
   },
   navMain: [
     {
       title: 'Data',
-      url: '#',
-      icon: SquareTerminal,
+      url: '/dashboard/projects',
+      icon: Database,
       isActive: true,
       items: [
         {
-          title: 'History',
+          title: 'Import',
           url: '#',
         },
         {
-          title: 'Starred',
-          url: '#',
-        },
-        {
-          title: 'Settings',
+          title: 'Export',
           url: '#',
         },
       ],
     },
     {
       title: 'Models',
-      url: '#',
-      icon: Bot,
+      url: '/dashboard/models',
+      icon: BrainCircuit,
       items: [
         {
-          title: 'Genesis',
-          url: '#',
-        },
-        {
-          title: 'Explorer',
-          url: '#',
-        },
-        {
-          title: 'Quantum',
+          title: 'Training',
           url: '#',
         },
       ],
@@ -59,45 +40,24 @@ export const data = {
       icon: BookOpen,
       items: [
         {
-          title: 'Introduction',
+          title: 'Default Models',
           url: '#',
         },
         {
-          title: 'Get Started',
+          title: 'Training Status',
           url: '#',
         },
         {
-          title: 'Tutorials',
-          url: '#',
-        },
-        {
-          title: 'Changelog',
+          title: 'Logs',
           url: '#',
         },
       ],
     },
     {
       title: 'Playground',
-      url: '#',
+      url: '/services/gradio',
       icon: SquareTerminal,
-      items: [
-        {
-          title: 'General',
-          url: '#',
-        },
-        {
-          title: 'Team',
-          url: '#',
-        },
-        {
-          title: 'Billing',
-          url: '#',
-        },
-        {
-          title: 'Limits',
-          url: '#',
-        },
-      ],
+      items: [],
     },
   ],
   navSecondary: [],
