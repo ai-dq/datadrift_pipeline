@@ -15,11 +15,11 @@ export const data = {
       items: [
         {
           title: 'Import',
-          url: '#',
+          url: '/dashboard/projects/import',
         },
         {
           title: 'Export',
-          url: '#',
+          url: '/dashboard/projects/export',
         },
       ],
     },
@@ -30,26 +30,26 @@ export const data = {
       items: [
         {
           title: 'Training',
-          url: '#',
+          url: '/dashboard/models/train',
         },
       ],
     },
     {
       title: 'Monitoring',
-      url: '#',
+      url: '/dashboard/monitoring',
       icon: BookOpen,
       items: [
         {
           title: 'Default Models',
-          url: '#',
+          url: '/dashboard/monitoring/default',
         },
         {
           title: 'Training Status',
-          url: '#',
+          url: '/dashboard/monitoring/status',
         },
         {
           title: 'Logs',
-          url: '#',
+          url: '/dashboard/monitoring/logs',
         },
       ],
     },
