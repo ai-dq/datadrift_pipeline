@@ -20,12 +20,8 @@ export default async function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${jetbrainsMono.variable}`}>
-      <body
-        className={
-          'antialiased bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-800'
-        }
-      >
-        {children}
+      <body className={'antialiased bg-sidebar-background'}>
+        <main className="flex-1">{children}</main>
       </body>
     </html>
   );
