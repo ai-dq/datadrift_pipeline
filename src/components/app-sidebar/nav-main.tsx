@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/collapsible';
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
@@ -36,12 +35,11 @@ export function NavMain({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible key={item.title} asChild defaultOpen={item.isActive}>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip={item.title}>
+              <SidebarMenuButton asChild tooltip={item.title} size="lg">
                 <Link href={item.url}>
                   <item.icon />
                   <span>{item.title}</span>
@@ -49,7 +47,7 @@ export function NavMain({
               </SidebarMenuButton>
               {item.items?.length ? (
                 <>
-                  <CollapsibleTrigger asChild>
+                  <CollapsibleTrigger asChild className="size-8">
                     <SidebarMenuAction className="data-[state=open]:rotate-90">
                       <ChevronRight />
                       <span className="sr-only">Toggle</span>
