@@ -63,4 +63,6 @@ export type ModelVersion = {
   id: string;
   version: string;
   trainedAt: string;
+  trainingMetrics: TrainingMetrics;
+  modelId: number;
 };
