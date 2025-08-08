@@ -23,7 +23,7 @@ interface SSEConfig extends BaseRequestConfig {
 }
 
 /** SSE event structure */
-interface SSEEvent<T = any> {
+export interface SSEEvent<T = any> {
   data: T;
   event?: string;
   id?: string;
