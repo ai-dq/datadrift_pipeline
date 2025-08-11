@@ -96,7 +96,6 @@ export class ApiClient {
       const requestOptions: RequestInit = {
         method,
         headers: {
-          Accept: 'text/event-stream',
           'Cache-Control': 'no-cache',
           ...headers,
         },
