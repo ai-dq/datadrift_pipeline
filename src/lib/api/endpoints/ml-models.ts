@@ -73,6 +73,9 @@ export const invokeTraining = async function* (
         data: {
           task_ids: taskIds,
         },
+        query: {
+          stream: true,
+        },
       },
     );
     yield* response;

@@ -125,7 +125,21 @@ export class ApiClient {
         }
       }
 
+      console.log('🌐 SSE Request:', {
+        url: requestUrl,
+        method,
+        headers: requestOptions.headers,
+        hasBody: !!requestOptions.body
+      });
+
       const response = await fetch(requestUrl, requestOptions);
+
+      console.log('📥 SSE Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+        headers: Object.fromEntries(response.headers.entries())
+      });
 
       if (!response.ok) {
         await this.handleErrorResponse(response);
@@ -164,13 +178,24 @@ export class ApiClient {
     const reader = body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    let chunkCount = 0;
+    let eventCount = 0;
+
+    console.log('🔄 Starting SSE stream parsing...');
 
     try {
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('✅ SSE stream completed after', chunkCount, 'chunks and', eventCount, 'events');
+          break;
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        chunkCount++;
+        const chunk = decoder.decode(value, { stream: true });
+        console.log(`📦 Chunk #${chunkCount} (${chunk.length} chars):`, JSON.stringify(chunk.substring(0, 100)));
+        
+        buffer += chunk;
 
         // Process complete events (separated by double newlines)
         let eventEnd = buffer.indexOf('\n\n');
@@ -178,8 +203,14 @@ export class ApiClient {
           const rawEvent = buffer.slice(0, eventEnd);
           buffer = buffer.slice(eventEnd + 2);
 
+          console.log(`🎯 Raw SSE event #${eventCount + 1}:`, JSON.stringify(rawEvent));
+
           const event = this.parseSSEEvent<T>(rawEvent, parseJson);
-          if (event) yield event;
+          if (event) {
+            eventCount++;
+            console.log(`✨ Parsed SSE event #${eventCount}:`, event);
+            yield event;
+          }
 
           eventEnd = buffer.indexOf('\n\n');
         }
