@@ -36,9 +36,12 @@ export default function ModelTrainingPage() {
 
   const trainingState = useTrainingState({
     modelId: trainingSetup.selectedModel?.id
-      ? parseInt(trainingSetup.selectedModel.id.toString())
-      : null,
+      ? parseInt(trainingSetup.selectedModel.id)
+      : 0,
     taskIds: [1, 2, 3, 4, 5], // TODO: Use actual task IDs
+    modelVersionID: trainingSetup.selectedVersion?.id
+      ? trainingSetup.selectedVersion.id
+      : 0,
     isAllSelected,
   });
 

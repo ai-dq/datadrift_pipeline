@@ -19,8 +19,9 @@ interface TrainingStateProps {
 }
 
 interface UseTrainingStateOptions {
-  modelId: number | null;
+  modelId: number;
   taskIds: number[];
+  modelVersionID?: number;
   isAllSelected: boolean;
 }
 
@@ -46,6 +47,7 @@ const getTrainingStatusMessage = (
 export const useTrainingState = ({
   modelId,
   taskIds,
+  modelVersionID,
   isAllSelected,
 }: UseTrainingStateOptions): TrainingStateProps => {
   const [isStarting, setIsStarting] = useState(false);
@@ -56,7 +58,7 @@ export const useTrainingState = ({
     error: trainingError,
     refetch: startTrainingRequest,
     reset: resetTrainingData,
-  } = useTrain(modelId || 0, taskIds);
+  } = useTrain(modelId, taskIds, modelVersionID);
 
   useEffect(() => {
     if (isTraining) {

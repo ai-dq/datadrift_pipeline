@@ -65,6 +65,7 @@ export const selectModelVersion = async (
 export const invokeTraining = async function* (
   mlBackendId: number,
   taskIds: number[],
+  modelVersionID?: number,
 ): AsyncGenerator<SSEEvent<string>, void, unknown> {
   try {
     const response = APIClient.labelstudio.postStream<string>(
@@ -72,6 +73,7 @@ export const invokeTraining = async function* (
       {
         data: {
           task_ids: taskIds,
+          ml_model_version: modelVersionID,
         },
         query: {
           stream: true,

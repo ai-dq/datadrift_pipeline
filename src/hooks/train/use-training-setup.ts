@@ -50,10 +50,6 @@ export const useTrainingSetup = (): TrainingSetupProps => {
     selectedModel ? Number(selectedModel.id) : undefined,
   );
 
-  useEffect(() => {
-    console.log(selectedType, selectedProject, selectedModel, selectedVersion);
-  }, [selectedType, selectedProject, selectedModel, selectedVersion]);
-
   /** 선택된 Task 타입에 해당하는 레이블링 프로젝트 목록 */
   const availableProjects = useMemo(() => {
     return selectedType

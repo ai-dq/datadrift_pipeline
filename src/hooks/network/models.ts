@@ -84,6 +84,7 @@ export function useModelVersions(modelID: number | undefined): {
 export function useTrain(
   mlBackendID: number,
   taskIDs: number[],
+  modelVersionID?: number,
 ): {
   data: TrainingProgress | null;
   loading: boolean;
@@ -118,8 +119,10 @@ export function useTrain(
         mlBackendID,
         'tasks:',
         taskIDs,
+        'modelVersionID:',
+        modelVersionID,
       );
-      const generator = invokeTraining(mlBackendID, taskIDs);
+      const generator = invokeTraining(mlBackendID, taskIDs, modelVersionID);
 
       let eventCount = 0;
       for await (const event of generator) {
@@ -195,7 +198,7 @@ export function useTrain(
         setLoading(false);
       }
     }
-  }, [mlBackendID, taskIDs, loading]);
+  }, [mlBackendID, taskIDs, modelVersionID, loading]);
 
   const refetch = useCallback(async () => {
     // New run: clear current data and last metrics snapshot
