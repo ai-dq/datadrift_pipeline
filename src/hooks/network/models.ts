@@ -1,10 +1,13 @@
 import { getModelById, getModelVersions, getModels } from '@/api/endpoints';
 import { invokeTraining } from '@/api/endpoints/ml-models';
-import { APIError, MLModelResponse, MLModelVersionResponse } from '@/api/types';
-import type { TrainingProgressResponse } from '@/api/types';
-import { TrainingProgressResponse as TrainingProgressResponseNamespace } from '@/api/models/train';
+import {
+  APIError,
+  MLModelResponse,
+  MLModelVersionResponse,
+  TrainingProgressResponse,
+} from '@/api/types';
 import { Model, ModelVersion } from '@/entities/ml-model';
-import { TrainingProgress } from '@/entities/train';
+import { TrainingProgress, TrainingStatus } from '@/entities/train';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiData, useApiItem } from './shared/useApiData';
 
@@ -92,6 +95,10 @@ export function useTrain(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Keep last non-null metrics for the current run only
+  const lastMetricsRef = useRef<NonNullable<
+    TrainingProgress['metrics']
+  > | null>(null);
 
   const startTraining = useCallback(async () => {
     if (loading) return;
@@ -152,12 +159,25 @@ export function useTrain(
 
           // Transform to entity using the response transformer
           const trainingProgress =
-            TrainingProgressResponseNamespace.toEntity(progressData);
+            TrainingProgressResponse.toEntity(progressData);
 
-          setData(trainingProgress);
+          // Update last non-null metrics when provided
+          if (trainingProgress?.metrics) {
+            lastMetricsRef.current = trainingProgress.metrics;
+          }
 
-          // Add small delay to allow React to process this render before next update
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          // Preserve metrics only for terminal statuses to avoid leaking old data at run start
+          if (
+            trainingProgress &&
+            trainingProgress.metrics == null &&
+            (trainingProgress.status === TrainingStatus.TRAINING_COMPLETED ||
+              trainingProgress.status === TrainingStatus.TRAINING_FAILED) &&
+            lastMetricsRef.current
+          ) {
+            setData({ ...trainingProgress, metrics: lastMetricsRef.current });
+          } else {
+            setData(trainingProgress);
+          }
         } catch (parseError) {
           console.warn('Failed to parse training progress data:', parseError);
           console.warn('Event data was:', event.data);
@@ -178,7 +198,9 @@ export function useTrain(
   }, [mlBackendID, taskIDs, loading]);
 
   const refetch = useCallback(async () => {
+    // New run: clear current data and last metrics snapshot
     setData(null);
+    lastMetricsRef.current = null;
     setLoading(true);
     await startTraining();
   }, [startTraining]);
@@ -186,6 +208,7 @@ export function useTrain(
   const reset = useCallback(() => {
     setData(null);
     setError(null);
+    lastMetricsRef.current = null;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }

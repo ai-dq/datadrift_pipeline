@@ -129,7 +129,7 @@ export class ApiClient {
         url: requestUrl,
         method,
         headers: requestOptions.headers,
-        hasBody: !!requestOptions.body
+        hasBody: !!requestOptions.body,
       });
 
       const response = await fetch(requestUrl, requestOptions);
@@ -138,7 +138,7 @@ export class ApiClient {
         status: response.status,
         statusText: response.statusText,
         contentType: response.headers.get('content-type'),
-        headers: Object.fromEntries(response.headers.entries())
+        headers: Object.fromEntries(response.headers.entries()),
       });
 
       if (!response.ok) {
@@ -187,14 +187,23 @@ export class ApiClient {
       while (true) {
         const { value, done } = await reader.read();
         if (done) {
-          console.log('✅ SSE stream completed after', chunkCount, 'chunks and', eventCount, 'events');
+          console.log(
+            '✅ SSE stream completed after',
+            chunkCount,
+            'chunks and',
+            eventCount,
+            'events',
+          );
           break;
         }
 
         chunkCount++;
         const chunk = decoder.decode(value, { stream: true });
-        console.log(`📦 Chunk #${chunkCount} (${chunk.length} chars):`, JSON.stringify(chunk.substring(0, 100)));
-        
+        console.log(
+          `📦 Chunk #${chunkCount} (${chunk.length} chars):`,
+          JSON.stringify(chunk.substring(0, 100)),
+        );
+
         buffer += chunk;
 
         // Process complete events (separated by double newlines)
@@ -203,7 +212,10 @@ export class ApiClient {
           const rawEvent = buffer.slice(0, eventEnd);
           buffer = buffer.slice(eventEnd + 2);
 
-          console.log(`🎯 Raw SSE event #${eventCount + 1}:`, JSON.stringify(rawEvent));
+          console.log(
+            `🎯 Raw SSE event #${eventCount + 1}:`,
+            JSON.stringify(rawEvent),
+          );
 
           const event = this.parseSSEEvent<T>(rawEvent, parseJson);
           if (event) {

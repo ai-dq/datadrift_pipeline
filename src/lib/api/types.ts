@@ -11,7 +11,7 @@ export { ProjectResponse } from './models/projects';
 export type { GetProjectsResponse as ProjectPageResponse } from './models/projects';
 
 // Training
-export type { TrainingProgressResponse } from './models/train';
+export { TrainingProgressResponse } from './models/train';
 
 // Pagination models
 export type {

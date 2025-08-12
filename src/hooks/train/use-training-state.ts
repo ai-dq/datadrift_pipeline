@@ -1,4 +1,4 @@
-import { TrainingStatus } from '@/entities/train';
+import { TrainingProgress, TrainingStatus } from '@/entities/train';
 import { useTrain } from '@/hooks/network/models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -12,6 +12,7 @@ interface TrainingStateProps {
   isStarting: boolean;
   trainingError: string | null;
   canStartTraining: boolean;
+  trainingData: TrainingProgress | null;
 
   startTraining: () => void;
   resetTraining: () => void;
@@ -118,6 +119,7 @@ export const useTrainingState = ({
     isStarting,
     trainingError,
     canStartTraining,
+    trainingData,
     startTraining,
     resetTraining,
   };
