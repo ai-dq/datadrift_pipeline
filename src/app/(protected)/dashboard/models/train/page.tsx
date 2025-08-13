@@ -4,8 +4,8 @@ import { TrainButton } from '@/components/training/TrainingButton';
 import { TrainingSelectionPanel } from '@/components/training/TrainingSelectionPanel';
 import { TrainingStatusPanel } from '@/components/training/TrainingStatusPanel';
 import { ModelType } from '@/entities/ml-model';
+import { useBackgroundTraining } from '@/hooks/train/use-background-training';
 import { useTrainingSetup } from '@/hooks/train/use-training-setup';
-import { useTrainingState } from '@/hooks/train/use-training-state';
 import { useMemo } from 'react';
 
 export default function ModelTrainingPage() {
@@ -34,7 +34,7 @@ export default function ModelTrainingPage() {
     trainingSetup.selectedVersion,
   ]);
 
-  const trainingState = useTrainingState({
+  const trainingState = useBackgroundTraining({
     modelId: trainingSetup.selectedModel?.id
       ? parseInt(trainingSetup.selectedModel.id)
       : 0,
@@ -42,6 +42,8 @@ export default function ModelTrainingPage() {
     modelVersionID: trainingSetup.selectedVersion?.id
       ? trainingSetup.selectedVersion.id
       : 0,
+    modelType: trainingSetup.selectedType,
+    projectName: trainingSetup.selectedProject?.title,
     isAllSelected,
   });
 
