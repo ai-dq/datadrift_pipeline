@@ -18,14 +18,14 @@ import {
 
 export function NavUser({
   user,
-  logout,
+  logoutAction,
 }: {
   user: {
     name: string;
     email: string;
     avatar: string;
   };
-  logout: () => Promise<string>;
+  logoutAction: () => Promise<string>;
 }) {
   const { isMobile } = useSidebar();
 
@@ -55,7 +55,7 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuItem onClick={logout}>
+            <DropdownMenuItem onClick={logoutAction}>
               <LogOut />
               Log out
             </DropdownMenuItem>
