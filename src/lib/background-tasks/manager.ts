@@ -8,7 +8,7 @@ import {
   TaskExecutor,
 } from './types';
 
-export class BackgroundTaskManagerImpl implements BackgroundTaskManager {
+export class DefaultBackgroundTaskManager implements BackgroundTaskManager {
   private tasks = new Map<string, BackgroundTask>();
   private abortControllers = new Map<string, AbortController>();
   private listeners = new Set<() => void>();
@@ -256,4 +256,4 @@ export class BackgroundTaskManagerImpl implements BackgroundTaskManager {
   };
 }
 
-export const backgroundTaskManager = new BackgroundTaskManagerImpl();
+export const DefaultBackgroundTask = new DefaultBackgroundTaskManager();

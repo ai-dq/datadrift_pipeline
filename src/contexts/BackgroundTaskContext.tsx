@@ -1,6 +1,6 @@
 'use client';
 
-import { backgroundTaskManager as taskManager } from '@/lib/background-tasks/manager';
+import { DefaultBackgroundTask } from '@/lib/background-tasks/manager';
 import {
   BackgroundTask,
   BackgroundTaskConfig,
@@ -37,10 +37,10 @@ export function BackgroundTaskProvider({
 
   useEffect(() => {
     const updateTasks = () => {
-      setTasks(taskManager.getAllTasks());
+      setTasks(DefaultBackgroundTask.getAllTasks());
     };
 
-    const unsubscribe = taskManager.subscribe(updateTasks);
+    const unsubscribe = DefaultBackgroundTask.subscribe(updateTasks);
     updateTasks();
 
     return unsubscribe;
@@ -55,12 +55,12 @@ export function BackgroundTaskProvider({
   const contextValue: BackgroundTaskContextType = {
     tasks,
     runningTasks,
-    startTask: taskManager.startTask,
-    cancelTask: taskManager.cancelTask,
-    getTask: taskManager.getTask,
-    getTasksByType: taskManager.getTasksByType,
-    clearCompletedTasks: taskManager.clearCompletedTasks,
-    clearAllTasks: taskManager.clearAllTasks,
+    startTask: DefaultBackgroundTask.startTask,
+    cancelTask: DefaultBackgroundTask.cancelTask,
+    getTask: DefaultBackgroundTask.getTask,
+    getTasksByType: DefaultBackgroundTask.getTasksByType,
+    clearCompletedTasks: DefaultBackgroundTask.clearCompletedTasks,
+    clearAllTasks: DefaultBackgroundTask.clearAllTasks,
   };
 
   return (
