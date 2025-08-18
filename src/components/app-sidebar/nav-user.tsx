@@ -25,7 +25,7 @@ export function NavUser({
     email: string;
     avatar: string;
   };
-  logoutAction: () => Promise<string>;
+  logoutAction: () => Promise<void>;
 }) {
   const { isMobile } = useSidebar();
 
