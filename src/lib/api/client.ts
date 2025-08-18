@@ -97,7 +97,6 @@ export class ApiClient {
         method,
         headers: {
           'Cache-Control': 'no-cache',
-          Accept: 'text/event-stream',
           ...headers,
         },
         signal: controller.signal,
