@@ -9,7 +9,7 @@ import {
 import { Model, ModelVersion } from '@/entities/ml-model';
 import { TrainingProgress, TrainingStatus } from '@/entities/train';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useApiData, useApiItem } from './shared/useApiData';
+import { useApiData, useApiItem } from './shared/network.hook';
 
 /**
  * Custom hook for managing models data
