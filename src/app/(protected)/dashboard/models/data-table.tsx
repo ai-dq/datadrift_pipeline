@@ -68,7 +68,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className="py-3"
+                      className="py-3 text-gray-500"
                       style={{
                         minWidth: header.column.columnDef.minSize,
                         maxWidth: header.column.columnDef.maxSize,

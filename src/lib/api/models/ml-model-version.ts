@@ -5,6 +5,7 @@ import {
   TrainingArgs,
   TrainingMetrics,
 } from '@/entities/ml-model';
+import { parseNumber } from '@/lib/utils/number.util';
 import { formatRelativeTime } from '@/utils/time.util';
 import { PaginatedResponse } from './pagination';
 import { formatRelativeTime } from '@/utils/time.util';
@@ -27,25 +28,25 @@ export namespace MLModelVersionResponse {
   export function toEntity(response: MLModelVersionResponse): ModelVersion {
     const metrics = response.metrics || {};
     const trainingMetrics: TrainingMetrics = {
-      epochs: Number(metrics.get('epoch')) || null,
-      trainingTime: Number(metrics.get('time')) || null,
-      precision: Number(metrics.get('metrics/precision(B)')) || null,
-      recall: Number(metrics.get('metrics/recall(B)')) || null,
-      map50: Number(metrics.get('metrics/mAP50(B)')) || null,
-      map50to95: Number(metrics.get('metrics/mAP50-95(B)')) || null,
+      epochs: parseNumber(metrics['epoch']),
+      trainingTime: parseNumber(metrics['time']),
+      precision: parseNumber(metrics['metrics/precision(B)']),
+      recall: parseNumber(metrics['metrics/recall(B)']),
+      map50: parseNumber(metrics['metrics/mAP50(B)']),
+      map50to95: parseNumber(metrics['metrics/mAP50-95(B)']),
     };
 
     const args = response.training_args || {};
     const trainingArgs: TrainingArgs = {
-      imageSize: Number(args.get('imgsz')) || null,
-      optimizer: args.get('optimizer') || null,
-      nbs: Number(args.get('nbs')) || null,
-      iou: Number(args.get('iou')) || null,
-      cls: Number(args.get('cls')) || null,
-      dfl: Number(args.get('dfl')) || null,
-      lr0: Number(args.get('lr0')) || null,
-      lrf: Number(args.get('lrf')) || null,
-      box: Number(args.get('box')) || null,
+      imageSize: parseNumber(args['imgsz']),
+      optimizer: args['optimizer'] ?? null,
+      nbs: parseNumber(args['nbs']),
+      iou: parseNumber(args['iou']),
+      cls: parseNumber(args['cls']),
+      dfl: parseNumber(args['dfl']),
+      lr0: parseNumber(args['lr0']),
+      lrf: parseNumber(args['lrf']),
+      box: parseNumber(args['box']),
     };
 
     return {

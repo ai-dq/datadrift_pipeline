@@ -99,7 +99,7 @@ const TrainedAtCell = memo(({ row }: { row: Row<ModelVersion> }) => {
 TrainedAtCell.displayName = 'TrainedAtCell';
 
 const MetricsCell = memo(({ metric }: { metric: number | null }) => {
-  return <div>{metric || '-'}</div>;
+  return <div>{metric ?? '-'}</div>;
 });
 MetricsCell.displayName = 'MetricsCell';
 
@@ -138,35 +138,35 @@ export const columns = (
   {
     header: 'Training Time',
     cell: ({ row }) => (
-      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+      <MetricsCell metric={row.original.trainingMetrics.trainingTime} />
     ),
     minSize: 60,
   },
   {
     header: 'Precision',
     cell: ({ row }) => (
-      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+      <MetricsCell metric={row.original.trainingMetrics.precision} />
     ),
     minSize: 60,
   },
   {
     header: 'Recall',
     cell: ({ row }) => (
-      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+      <MetricsCell metric={row.original.trainingMetrics.recall} />
     ),
     minSize: 60,
   },
   {
     header: 'mAP50',
     cell: ({ row }) => (
-      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+      <MetricsCell metric={row.original.trainingMetrics.map50} />
     ),
     minSize: 60,
   },
   {
     header: 'mAP50-95',
     cell: ({ row }) => (
-      <MetricsCell metric={row.original.trainingMetrics.epochs} />
+      <MetricsCell metric={row.original.trainingMetrics.map50to95} />
     ),
     minSize: 60,
   },

@@ -73,7 +73,7 @@ export const DataTable = memo(
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
-                      className={`py-3 ${header.column.columnDef.header === 'Version' ? 'text-left' : 'text-center'}`}
+                      className={`py-3 ${header.column.columnDef.header === 'Version' ? 'text-left' : 'text-center'} text-gray-500`}
                       style={{
                         minWidth: header.column.columnDef.minSize,
                         maxWidth: header.column.columnDef.maxSize,
@@ -96,7 +96,7 @@ export const DataTable = memo(
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-gray-50 transition-colors h-16"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
