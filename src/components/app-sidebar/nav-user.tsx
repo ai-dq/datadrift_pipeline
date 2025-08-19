@@ -51,11 +51,11 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg border-sidebar-border"
-            side={isMobile ? 'bottom' : 'right'}
+            side={isMobile ? 'bottom' : 'top'}
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuItem onClick={logoutAction}>
+            <DropdownMenuItem variant="destructive" onClick={logoutAction}>
               <LogOut />
               Log out
             </DropdownMenuItem>
