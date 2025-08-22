@@ -1,5 +1,5 @@
-import { invokeTraining } from '@/api/endpoints/ml-models';
-import { TrainingProgressResponse } from '@/api/types';
+import { invokeTraining } from '@/lib/api/endpoints/ml-models';
+import { TrainingProgressResponse } from '@/lib/api/types';
 import { TrainingProgress, TrainingStatus } from '@/entities/train';
 import {
   BackgroundTaskProgress,

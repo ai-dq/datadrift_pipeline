@@ -609,6 +609,18 @@ const CREATE_API_BASE_URL = (path: string): string => {
   return `${envUrl || defaultUrl}${path}`;
 };
 
+const CREATE_INTERNAL_BASE_URL = (path: string): string => {
+  const isDev = process.env.NODE_ENV === 'development';
+
+  const envURL = process.env.NEXT_PUBLIC_HOST;
+
+  if (isDev) {
+    return `/next-api/internal${path}`;
+  }
+
+  return `${envURL}${path}`;
+};
+
 /**
  * Pre-configured API client instances
  */
@@ -617,6 +629,8 @@ export const APIClient = {
   direct: new ApiClient(CREATE_API_BASE_URL('/')),
   /** Label Studio API client */
   labelstudio: new ApiClient(CREATE_API_BASE_URL('/api')),
+  /** Next.js Internal API client */
+  internal: new ApiClient(CREATE_INTERNAL_BASE_URL('/')),
 } as const;
 
 /**

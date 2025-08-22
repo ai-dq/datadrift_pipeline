@@ -1,11 +1,11 @@
-import { getModelById, getModelVersions, getModels } from '@/api/endpoints';
-import { invokeTraining } from '@/api/endpoints/ml-models';
+import { getModelById, getModelVersions, getModels } from '@/lib/api/endpoints';
+import { invokeTraining } from '@/lib/api/endpoints/ml-models';
 import {
   APIError,
   MLModelResponse,
   MLModelVersionResponse,
   TrainingProgressResponse,
-} from '@/api/types';
+} from '@/lib/api/types';
 import { Model, ModelVersion } from '@/entities/ml-model';
 import { TrainingProgress, TrainingStatus } from '@/entities/train';
 import { useCallback, useEffect, useRef, useState } from 'react';

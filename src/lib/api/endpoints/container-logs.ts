@@ -1,4 +1,4 @@
-import { ApiClient, ApiError, SSEEvent } from '../client';
+import { APIClient, ApiError, SSEEvent } from '../client';
 
 export interface LogMessage {
   container: string;
@@ -23,19 +23,11 @@ export interface LogStreamOptions {
   exclude?: string;
 }
 
-/**
- * Stream container logs using Server-Sent Events
- * @param options - Log streaming configuration options
- * @returns AsyncGenerator yielding log events
- */
-// Create internal API client for Next.js routes (no external proxy)
-const InternalAPIClient = new ApiClient('');
-
 export const streamContainerLogs = async function* (
   options: LogStreamOptions = {},
 ): AsyncGenerator<SSEEvent<LogMessage>, void, unknown> {
   try {
-    const response = InternalAPIClient.getStream<LogMessage>('/next-api/logs', {
+    const response = APIClient.internal.getStream<LogMessage>('/logs', {
       query: {
         follow: options.follow ?? true,
         timestamps: options.timestamps ?? true,

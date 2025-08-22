@@ -2,7 +2,7 @@ import {
   streamContainerLogs,
   LogMessage,
   LogStreamOptions,
-} from '@/api/endpoints';
+} from '@/lib/api/endpoints';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
