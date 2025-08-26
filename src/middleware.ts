@@ -69,6 +69,8 @@ function handleAuthentication(request: NextRequest): NextResponse {
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
+  const isInternalRequest = pathname.startsWith('next-api');
+
   // Handle Label Studio API routes
   if (pathname.startsWith('/labelstudio/api/')) {
     return handleAPIRoutes(request);
