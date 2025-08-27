@@ -42,6 +42,7 @@ function useAuthRedirect(isAuthenticated: boolean | undefined) {
   const router = useRouter();
 
   const handleAuthRedirect = useCallback(() => {
+    console.info('Auth redirect triggered');
     if (isAuthenticated === undefined) return;
 
     const currentPath = window.location.pathname;
@@ -71,7 +72,7 @@ function useAuthActions(
       await getCurrentUser();
       setIsAuthenticated(true);
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.warn('Auth check failed:', error);
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);

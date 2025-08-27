@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const NON_TOKEN_REFRESH_PATHS = ['/login', '/logout', '/token/obtain'];
+const NON_TOKEN_REFRESH_PATHS = [
+  '/login',
+  '/logout',
+  '/token/obtain',
+  '/current-user/whoami',
+];
 
 export const config = {
   matcher: [

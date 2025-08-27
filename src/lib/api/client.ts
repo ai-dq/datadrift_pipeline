@@ -601,7 +601,6 @@ export class ApiClient {
    */
   private async handleErrorResponse(response: Response): Promise<never> {
     const errorData = await this.extractErrorData(response);
-    this.redirectOnAuthError(response.status, errorData.parsedContent);
 
     throw new ApiError(response.status, errorData.message, errorData.details);
   }
