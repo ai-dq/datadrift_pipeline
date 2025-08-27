@@ -1,6 +1,6 @@
+import { TrainingProgress, TrainingStatus } from '@/entities/train';
 import { invokeTraining } from '@/lib/api/endpoints/ml-models';
 import { TrainingProgressResponse } from '@/lib/api/types';
-import { TrainingProgress, TrainingStatus } from '@/entities/train';
 import {
   BackgroundTaskProgress,
   BackgroundTaskStatus,

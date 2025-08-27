@@ -18,7 +18,7 @@ export const config = {
   ],
 };
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function middleware(request: NextRequest): Promise<Response> {
   const { pathname } = request.nextUrl;
   console.info('Middleware called for path:', pathname);
 
@@ -42,52 +42,50 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
  *
  * @param request - This request's pathname starts with '/labelstudio/api'
  */
-async function handleHTTPRequests(request: NextRequest): Promise<NextResponse> {
+async function handleHTTPRequests(request: NextRequest): Promise<Response> {
   let handlingRequest = request;
-  let headers = new Headers(request.headers);
 
   // Step 1. Rewrite external requests to actual API endpoints
   handlingRequest = rewriteExternalRequest(handlingRequest);
   console.debug('1️⃣ Rewritten request:', handlingRequest.nextUrl.pathname);
 
-  const isDirect =
-    !handlingRequest.nextUrl.pathname.startsWith('/labelstudio/api');
-
   // Step 2. Add Authorization header to the request
   const { request: newRequest, headers: newHeaders } =
     await attachAuthorizationHeader(handlingRequest);
   handlingRequest = newRequest;
-  headers = newHeaders;
+  const headers = newHeaders;
   console.debug(
     '2️⃣ Added Authorization header:',
     handlingRequest.nextUrl.pathname,
   );
 
-  // Step Final. Rewrite the request with updated request
-  const response = NextResponse.rewrite(handlingRequest.nextUrl, {
-    request: {
-      headers,
-    },
+  // Step Final. Make fetch get the response and handle cookies
+  // NextResponse.rewrite() doesn't work for SSE responses, so we need to use fetch directly
+  const fetchResponse = await fetch(handlingRequest, {
+    method: handlingRequest.method,
+    headers,
+    body: handlingRequest.body,
   });
-  console.debug('Got response: ' + response.status);
 
-  // Set the new cookie
+  // For SSE responses, stream directly without buffering
+  const contentType = fetchResponse.headers.get('content-type');
+  let ResponseType = contentType?.includes('text/event-stream')
+    ? Response
+    : NextResponse;
+
+  const response = new ResponseType(fetchResponse.body, {
+    status: fetchResponse.status,
+    statusText: fetchResponse.statusText,
+    headers: fetchResponse.headers,
+  });
+
   const validAccessToken = handlingRequest.cookies.get('ls_access_token');
-  if (!validAccessToken) {
-    console.warn(
-      `No valid access token found. This error should not happen.
-      If it does, \`attachAuthorizationHeader\` method should have broken.`,
+  if (validAccessToken) {
+    response.headers.set(
+      'Set-Cookie',
+      `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; ${process.env.NODE_ENV === 'production' ? 'Secure; ' : ''}SameSite=lax`,
     );
-    return response;
   }
-
-  response.cookies.set('ls_access_token', validAccessToken.value, {
-    path: '/',
-    maxAge: 60 * 60 * 24, // 1 day
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
 
   return response;
 }

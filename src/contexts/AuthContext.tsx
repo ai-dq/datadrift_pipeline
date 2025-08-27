@@ -42,15 +42,17 @@ function useAuthRedirect(isAuthenticated: boolean | undefined) {
   const router = useRouter();
 
   const handleAuthRedirect = useCallback(() => {
-    console.info('Auth redirect triggered');
+    console.info(`Auth redirect triggered: ${isAuthenticated}`);
     if (isAuthenticated === undefined) return;
 
     const currentPath = window.location.pathname;
-    const isLoginPage = currentPath === '/login';
+    const shouldRedirectToDashboard = ['/', '/login'].some((path) => {
+      return currentPath === path;
+    });
 
-    if (isAuthenticated && isLoginPage) {
+    if (isAuthenticated && shouldRedirectToDashboard) {
       router.replace('/dashboard');
-    } else if (!isAuthenticated && !isLoginPage) {
+    } else if (!isAuthenticated && !shouldRedirectToDashboard) {
       router.replace('/login');
     }
   }, [isAuthenticated, router]);
