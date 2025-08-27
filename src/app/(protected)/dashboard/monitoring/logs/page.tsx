@@ -46,19 +46,13 @@ export default function LogsMonitoringPage() {
     tail: tailLines === 'all' ? 'all' : parseInt(tailLines) || 200,
   };
 
-  // Only pass valid options when both streaming and container are selected
-  const shouldStream = isStreaming && selectedContainer.trim();
-  const hookOptions = shouldStream
-    ? logOptions
-    : { include: 'no-container-selected' };
-
   const {
     data: logs,
     loading,
     error,
     refetch,
     reset,
-  } = useContainerLogs(hookOptions);
+  } = useContainerLogs(logOptions);
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {

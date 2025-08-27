@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
 import { getCookie } from '@/utils/cookie.util';
+import { useCallback, useState } from 'react';
 
 /** HTTP method types */
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -52,6 +52,198 @@ export class ApiClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL.replace(/\/$/, ''); // Remove trailing slash
+  }
+
+  /**
+   * Internal request method with automatic error handling and response parsing
+   */
+  private async request<T = any>(
+    endpoint: string,
+    options: RequestOptions = {},
+  ): Promise<T> {
+    const { url: requestURL, config } = this.buildRequestURL(options, endpoint);
+
+    try {
+      const response = await fetch(requestURL, config);
+
+      if (!response.ok) {
+        await this.handleErrorResponse(response);
+      }
+
+      // Handle empty responses
+      if (
+        response.status === 204 ||
+        response.headers.get('content-length') === '0'
+      ) {
+        return {} as T;
+      }
+
+      // Parse response based on content type
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        return await response.json();
+      }
+      return (await response.text()) as unknown as T;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      // Handle network errors, timeouts, etc.
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new ApiError(0, 'Network error or request failed', errorMessage);
+    }
+  }
+
+  private buildRequestURL(
+    options: RequestOptions,
+    endpoint: string,
+  ): { url: string; config: RequestInit } {
+    const { method = 'GET', headers = {}, body, signal, query } = options;
+
+    // Build request headers with automatic content-type detection
+    const requestHeaders: Record<string, string> = {
+      ...{ 'Content-Type': 'application/json' },
+      ...headers,
+    };
+
+    // Add CSRF token for state-changing requests
+    if (method !== 'GET') {
+      const csrfToken = getCookie('csrftoken');
+      if (csrfToken) {
+        requestHeaders['X-CSRFToken'] = csrfToken;
+      }
+    }
+
+    // Build final URL with query parameters
+    const queryString = this.buildQueryString(query);
+    const normalizedEndpoint = endpoint.startsWith('/')
+      ? endpoint
+      : `/${endpoint}`;
+    const requestUrl = `${this.baseURL}${normalizedEndpoint}${queryString}`;
+
+    const config: RequestInit = {
+      method,
+      headers: requestHeaders,
+      signal,
+      credentials: 'include', // Include cookies for authentication
+    };
+
+    // Add body for non-GET requests
+    if (body && method !== 'GET') {
+      config.body = body instanceof FormData ? body : JSON.stringify(body);
+    }
+    return {
+      url: requestUrl,
+      config: config,
+    };
+  }
+
+  /**
+   * GET request
+   * @param endpoint - API endpoint path
+   * @param config - Request configuration
+   */
+  async get<T = any>(
+    endpoint: string,
+    config: BaseRequestConfig = {},
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...config,
+      method: 'GET',
+    });
+  }
+
+  /**
+   * GET request with Server-Sent Events streaming
+   * @param endpoint - API endpoint path
+   * @param config - SSE configuration
+   */
+  getStream<T = any>(
+    endpoint: string,
+    config: SSEConfig = {},
+  ): AsyncGenerator<SSEEvent<T>, void, unknown> {
+    return this.streamSSE<T>(endpoint, config);
+  }
+
+  /**
+   * POST request with data and optional query parameters
+   * @param endpoint - API endpoint path
+   * @param config - Request configuration with data
+   */
+  async post<T = any>(
+    endpoint: string,
+    config: RequestWithBodyConfig = {},
+  ): Promise<T> {
+    const { data, ...restConfig } = config;
+    return this.request<T>(endpoint, {
+      ...restConfig,
+      method: 'POST',
+      body: data,
+    });
+  }
+
+  /**
+   * POST request with Server-Sent Events streaming
+   * @param endpoint - API endpoint path
+   * @param config - SSE configuration with optional data
+   */
+  postStream<T = any>(
+    endpoint: string,
+    config: SSEConfig & { data?: any } = {},
+  ): AsyncGenerator<SSEEvent<T>, void, unknown> {
+    // Note: POST SSE is uncommon but supported
+    return this.streamSSE<T>(endpoint, config, 'POST');
+  }
+
+  /**
+   * PUT request with data and optional query parameters
+   * @param endpoint - API endpoint path
+   * @param config - Request configuration with data
+   */
+  async put<T = any>(
+    endpoint: string,
+    config: RequestWithBodyConfig = {},
+  ): Promise<T> {
+    const { data, ...restConfig } = config;
+    return this.request<T>(endpoint, {
+      ...restConfig,
+      method: 'PUT',
+      body: data,
+    });
+  }
+
+  /**
+   * PATCH request with data and optional query parameters
+   * @param endpoint - API endpoint path
+   * @param config - Request configuration with data
+   */
+  async patch<T = any>(
+    endpoint: string,
+    config: RequestWithBodyConfig = {},
+  ): Promise<T> {
+    const { data, ...restConfig } = config;
+    return this.request<T>(endpoint, {
+      ...restConfig,
+      method: 'PATCH',
+      body: data,
+    });
+  }
+
+  /**
+   * DELETE request with optional query parameters
+   * @param endpoint - API endpoint path
+   * @param config - Request configuration
+   */
+  async delete<T = any>(
+    endpoint: string,
+    config: BaseRequestConfig = {},
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...config,
+      method: 'DELETE',
+    });
   }
 
   /**
@@ -537,200 +729,6 @@ export class ApiClient {
     const queryString = params.toString();
     return queryString ? `?${queryString}` : '';
   }
-
-  /**
-   * Internal request method with automatic error handling and response parsing
-   */
-  private async request<T = any>(
-    endpoint: string,
-    options: RequestOptions = {},
-  ): Promise<T> {
-    const { url: requestURL, config } = this.buildRequestURL(options, endpoint);
-
-    try {
-      const response = await fetch(requestURL, config);
-
-      if (!response.ok) {
-        await this.handleErrorResponse(response);
-      }
-
-      // Handle empty responses
-      if (
-        response.status === 204 ||
-        response.headers.get('content-length') === '0'
-      ) {
-        return {} as T;
-      }
-
-      // Parse response based on content type
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        return await response.json();
-      }
-      return (await response.text()) as unknown as T;
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-
-      // Handle network errors, timeouts, etc.
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      throw new ApiError(0, 'Network error or request failed', errorMessage);
-    }
-  }
-
-  private buildRequestURL(
-    options: RequestOptions,
-    endpoint: string,
-  ): { url: string; config: RequestInit } {
-    const { method = 'GET', headers = {}, body, signal, query } = options;
-
-    // Build request headers with automatic content-type detection
-    const requestHeaders: Record<string, string> = {
-      ...(body instanceof FormData
-        ? {} // let browser set Content-Type for FormData
-        : { 'Content-Type': 'application/json' }),
-      ...headers,
-    };
-
-    // Add CSRF token for state-changing requests
-    if (method !== 'GET') {
-      const csrfToken = getCookie('csrftoken');
-      if (csrfToken) {
-        requestHeaders['X-CSRFToken'] = csrfToken;
-      }
-    }
-
-    // Build final URL with query parameters
-    const queryString = this.buildQueryString(query);
-    const normalizedEndpoint = endpoint.startsWith('/')
-      ? endpoint
-      : `/${endpoint}`;
-    const requestUrl = `${this.baseURL}${normalizedEndpoint}${queryString}`;
-
-    const config: RequestInit = {
-      method,
-      headers: requestHeaders,
-      signal,
-      credentials: 'include', // Include cookies for authentication
-    };
-
-    // Add body for non-GET requests
-    if (body && method !== 'GET') {
-      config.body = body instanceof FormData ? body : JSON.stringify(body);
-    }
-    return {
-      url: requestUrl,
-      config: config,
-    };
-  }
-
-  /**
-   * GET request
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration
-   */
-  async get<T = any>(
-    endpoint: string,
-    config: BaseRequestConfig = {},
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...config,
-      method: 'GET',
-    });
-  }
-
-  /**
-   * GET request with Server-Sent Events streaming
-   * @param endpoint - API endpoint path
-   * @param config - SSE configuration
-   */
-  getStream<T = any>(
-    endpoint: string,
-    config: SSEConfig = {},
-  ): AsyncGenerator<SSEEvent<T>, void, unknown> {
-    return this.streamSSE<T>(endpoint, config);
-  }
-
-  /**
-   * POST request with data and optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration with data
-   */
-  async post<T = any>(
-    endpoint: string,
-    config: RequestWithBodyConfig = {},
-  ): Promise<T> {
-    const { data, ...restConfig } = config;
-    return this.request<T>(endpoint, {
-      ...restConfig,
-      method: 'POST',
-      body: data,
-    });
-  }
-
-  /**
-   * POST request with Server-Sent Events streaming
-   * @param endpoint - API endpoint path
-   * @param config - SSE configuration with optional data
-   */
-  postStream<T = any>(
-    endpoint: string,
-    config: SSEConfig & { data?: any } = {},
-  ): AsyncGenerator<SSEEvent<T>, void, unknown> {
-    // Note: POST SSE is uncommon but supported
-    return this.streamSSE<T>(endpoint, config, 'POST');
-  }
-
-  /**
-   * PUT request with data and optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration with data
-   */
-  async put<T = any>(
-    endpoint: string,
-    config: RequestWithBodyConfig = {},
-  ): Promise<T> {
-    const { data, ...restConfig } = config;
-    return this.request<T>(endpoint, {
-      ...restConfig,
-      method: 'PUT',
-      body: data,
-    });
-  }
-
-  /**
-   * PATCH request with data and optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration with data
-   */
-  async patch<T = any>(
-    endpoint: string,
-    config: RequestWithBodyConfig = {},
-  ): Promise<T> {
-    const { data, ...restConfig } = config;
-    return this.request<T>(endpoint, {
-      ...restConfig,
-      method: 'PATCH',
-      body: data,
-    });
-  }
-
-  /**
-   * DELETE request with optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration
-   */
-  async delete<T = any>(
-    endpoint: string,
-    config: BaseRequestConfig = {},
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...config,
-      method: 'DELETE',
-    });
-  }
 }
 
 /**
@@ -771,17 +769,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Make base URL for API endpoints
+ *   - direct, external: http://localhost:9999/labelstudio(/api)/{path}
+ *   - internal: http://localhost:9999/next-api/internal/{path}
+ *
+ * @param path - API endpoint path
+ * @param internal - Whether the request is internal to the Next.js app
+ */
 const makeBaseURL = (path: string, internal?: boolean): string => {
-  const labelstudioURL =
-    process.env.NEXT_PUBLIC_LABELSTUDIO_URL ||
-    'http://localhost:9999/labelstudio';
-
-  const isDev = process.env.NODE_ENV === 'development';
-  if (isDev) {
-    return `/next-api/${internal ? 'internal' : 'external'}${path}`;
-  }
-
-  return `${labelstudioURL}${path}`;
+  return `${internal ? '/next-api/internal' : '/next-api/external'}${path}`;
 };
 
 /**
@@ -791,7 +788,7 @@ export const APIClient = {
   /** Direct API client for root endpoints */
   direct: new ApiClient(makeBaseURL('/')),
   /** Label Studio API client */
-  labelstudio: new ApiClient(makeBaseURL('/api')),
+  external: new ApiClient(makeBaseURL('/api')),
   /** Next.js Internal API client */
   internal: new ApiClient(makeBaseURL('/', true)),
 } as const;

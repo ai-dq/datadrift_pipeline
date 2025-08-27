@@ -17,7 +17,7 @@ export const getProjects = async (): Promise<ProjectPageResponse> => {
       'total_annotations_number',
       'total_predictions_number',
     ];
-    const response = await APIClient.labelstudio.get<ProjectPageResponse>(
+    const response = await APIClient.external.get<ProjectPageResponse>(
       '/projects',
       {
         query: {
@@ -38,7 +38,7 @@ export const updateProject = async (
   project: UpdateProjectRequest,
 ): Promise<UpdateProjectResponse> => {
   try {
-    const response = await APIClient.labelstudio.patch<UpdateProjectResponse>(
+    const response = await APIClient.external.patch<UpdateProjectResponse>(
       `/projects/${id}`,
       {
         data: project,
