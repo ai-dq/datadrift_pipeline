@@ -46,14 +46,16 @@ function useAuthRedirect(isAuthenticated: boolean | undefined) {
     if (isAuthenticated === undefined) return;
 
     const currentPath = window.location.pathname;
-    const shouldRedirectToDashboard = ['/', '/login'].some((path) => {
+    const isPublicRoute = ['/', '/login'].some((path) => {
       return currentPath === path;
     });
 
-    if (isAuthenticated && shouldRedirectToDashboard) {
+    if (isAuthenticated && isPublicRoute) {
       router.replace('/dashboard');
-    } else if (!isAuthenticated && !shouldRedirectToDashboard) {
-      router.replace('/login');
+    } else if (!isAuthenticated) {
+      if (!isPublicRoute || currentPath === '/') {
+        router.replace('/login');
+      }
     }
   }, [isAuthenticated, router]);
 
