@@ -27,16 +27,19 @@ export const streamContainerLogs = async function* (
   options: LogStreamOptions = {},
 ): AsyncGenerator<SSEEvent<LogMessage>, void, unknown> {
   try {
-    const response = APIClient.internal.getStream<LogMessage>('/logs', {
-      query: {
-        follow: options.follow ?? true,
-        timestamps: options.timestamps ?? true,
-        ...(options.since !== undefined && { since: options.since }),
-        ...(options.tail !== undefined && { tail: options.tail }),
-        ...(options.include && { include: options.include }),
-        ...(options.exclude && { exclude: options.exclude }),
+    const response = APIClient.external.getStream<LogMessage>(
+      '/container/logs',
+      {
+        query: {
+          follow: options.follow ?? true,
+          timestamps: options.timestamps ?? true,
+          ...(options.since !== undefined && { since: options.since }),
+          ...(options.tail !== undefined && { tail: options.tail }),
+          ...(options.include && { include: options.include }),
+          ...(options.exclude && { exclude: options.exclude }),
+        },
       },
-    });
+    );
     yield* response;
   } catch (error) {
     console.error('Failed to stream container logs:', error);

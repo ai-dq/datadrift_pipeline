@@ -776,8 +776,8 @@ export class ApiError extends Error {
  * @param path - API endpoint path
  * @param internal - Whether the request is internal to the Next.js app
  */
-const makeBaseURL = (path: string, internal?: boolean): string => {
-  return `${internal ? '/next-api/internal' : '/next-api/external'}${path}`;
+const makeBaseURL = (path: string): string => {
+  return `/next-api/external${path}`;
 };
 
 /**
@@ -788,8 +788,6 @@ export const APIClient = {
   direct: new ApiClient(makeBaseURL('/')),
   /** Label Studio API client */
   external: new ApiClient(makeBaseURL('/api')),
-  /** Next.js Internal API client */
-  internal: new ApiClient(makeBaseURL('/', true)),
 } as const;
 
 /**

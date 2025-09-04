@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 
 const NON_TOKEN_REFRESH_PATHS = [
-  '/login',
-  '/logout',
+  '/user/login',
+  '/user/logout',
   '/token/obtain',
   '/current-user/whoami',
 ];
@@ -10,7 +10,6 @@ const NON_TOKEN_REFRESH_PATHS = [
 export const config = {
   matcher: [
     // HTTP Requests
-    '/next-api/internal/:function*',
     '/next-api/external/:function*',
     // Page Routes
     '/dashboard/:path*',
@@ -21,12 +20,6 @@ export const config = {
 export async function middleware(request: NextRequest): Promise<Response> {
   const { pathname } = request.nextUrl;
   console.info('Middleware called for path:', pathname);
-
-  // Direct route determination with early returns for optimal performance
-  if (pathname.startsWith('/next-api/internal')) {
-    // Let internal API route handles request
-    return NextResponse.next();
-  }
 
   // LabelStudio API routes (include API endpoints + direct requests)
   if (pathname.startsWith('/next-api/external')) {
@@ -83,7 +76,7 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
   if (validAccessToken) {
     response.headers.set(
       'Set-Cookie',
-      `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; ${process.env.NODE_ENV === 'production' ? 'Secure; ' : ''}SameSite=lax`,
+      `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; SameSite=lax`,
     );
   }
 
