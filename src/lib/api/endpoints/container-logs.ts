@@ -1,29 +1,23 @@
 import { APIClient, ApiError, SSEEvent } from '../client';
 
 export interface LogMessage {
-  container: string;
-  stream?: 'stdout' | 'stderr';
-  message: string;
-  error?: string;
-  info?: string;
+  container?: string;
+  type?: string;
+  content: string;
+  timestamp: string;
 }
 
 export interface LogStreamOptions {
   /** Follow logs in real-time (default: true) */
   follow?: boolean;
-  /** Include timestamps in log output (default: true) */
-  timestamps?: boolean;
   /** Show logs since this Unix timestamp */
   since?: number;
   /** Number of lines to show from end of logs (default: 200) */
   tail?: number | 'all';
-  /** Comma-separated container/service names to include */
-  include?: string;
-  /** Comma-separated container/service names to exclude */
-  exclude?: string;
 }
 
 export const streamContainerLogs = async function* (
+  container: string,
   options: LogStreamOptions = {},
 ): AsyncGenerator<SSEEvent<LogMessage>, void, unknown> {
   try {
@@ -31,12 +25,10 @@ export const streamContainerLogs = async function* (
       '/container/logs',
       {
         query: {
+          container,
           follow: options.follow ?? true,
-          timestamps: options.timestamps ?? true,
           ...(options.since !== undefined && { since: options.since }),
           ...(options.tail !== undefined && { tail: options.tail }),
-          ...(options.include && { include: options.include }),
-          ...(options.exclude && { exclude: options.exclude }),
         },
       },
     );

@@ -1,4 +1,4 @@
-import {NextRequest, NextResponse} from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const NON_TOKEN_REFRESH_PATHS = [
   '/user/login',
