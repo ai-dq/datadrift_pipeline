@@ -7,8 +7,15 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useState } from 'react';
 import FileUpload from './file-upload';
 
@@ -17,12 +24,20 @@ type FileItem = {
   id: string;
 };
 
+type Project = {
+  id: string;
+  title: string;
+};
+
 interface FileUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string;
   description?: string;
-  onUpload?: (files: FileItem[]) => Promise<void> | void;
+  projects?: Project[];
+  selectedProjectId?: string;
+  onProjectChange?: (projectId: string) => void;
+  onUpload?: (files: FileItem[], projectId?: string) => Promise<void> | void;
 }
 
 export function FileUploadDialog({
@@ -30,6 +45,9 @@ export function FileUploadDialog({
   onOpenChange,
   title = 'Upload Files',
   description = 'Select files to upload to your project',
+  projects = [],
+  selectedProjectId,
+  onProjectChange,
   onUpload,
 }: FileUploadDialogProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -40,7 +58,7 @@ export function FileUploadDialog({
 
     setIsUploading(true);
     try {
-      await onUpload(files);
+      await onUpload(files, selectedProjectId);
       setFiles([]);
       onOpenChange(false);
     } catch (error) {
@@ -57,7 +75,27 @@ export function FileUploadDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">
+        <div className="py-4 space-y-4">
+          {projects.length > 0 && (
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Select Project
+              </label>
+              <Select value={selectedProjectId} onValueChange={onProjectChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a project to upload to..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <FileUpload onFilesChange={setFiles} />
         </div>
 
@@ -67,7 +105,11 @@ export function FileUploadDialog({
           </Button>
           <Button
             onClick={handleUpload}
-            disabled={files.length === 0 || isUploading}
+            disabled={
+              files.length === 0 ||
+              isUploading ||
+              (!selectedProjectId && projects.length > 0)
+            }
           >
             {isUploading ? 'Uploading...' : 'Upload Files'}
           </Button>

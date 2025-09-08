@@ -1,4 +1,8 @@
-import { LogMessage, LogStreamOptions, streamContainerLogs } from '@/lib/api/endpoints';
+import {
+  LogMessage,
+  LogStreamOptions,
+  streamContainerLogs,
+} from '@/lib/api/endpoints';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**

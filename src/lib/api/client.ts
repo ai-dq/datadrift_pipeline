@@ -104,7 +104,10 @@ export class ApiClient {
 
     // Build request headers with automatic content-type detection
     const requestHeaders: Record<string, string> = {
-      ...{ 'Content-Type': 'application/json' },
+      // Only set default Content-Type if body is not FormData
+      ...(body instanceof FormData
+        ? {}
+        : { 'Content-Type': 'application/json' }),
       ...headers,
     };
 

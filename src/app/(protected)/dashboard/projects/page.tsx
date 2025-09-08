@@ -5,6 +5,10 @@ import { ProjectCardCollection } from '@/components/labelstudio/project-card-col
 import { Button } from '@/components/ui/button';
 import { Project } from '@/entities/labelstudio';
 import { useProjects, useUpdateProject } from '@/hooks/network/projects';
+import {
+  uploadFilesToProject,
+  validateFiles,
+} from '@/lib/api/utils/file-upload';
 import { Download, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -14,6 +18,7 @@ export default function LabelStudioPage() {
   const { data: projects, refetch } = useProjects();
   const { requestFn: updateProject } = useUpdateProject();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   const handleProjectEdit = useCallback(
     async (project: Project): Promise<Project | null> => {
@@ -47,22 +52,51 @@ export default function LabelStudioPage() {
         file: File | { type: string; name: string; size: number };
         id: string;
       }>,
+      projectId?: string,
     ) => {
-      // TODO: Implement actual upload logic here
-      console.log('Uploading files:', files);
+      const targetProjectId = projectId || selectedProjectId;
 
-      // For now, just simulate an upload delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (!targetProjectId) {
+        throw new Error('Please select a project to upload files to');
+      }
 
-      // Here you would typically:
-      // 1. Create FormData and append files
-      // 2. Make API call to your upload endpoint
-      // 3. Handle upload progress if needed
-      // 4. Handle success/error responses
+      // Extract actual File objects from the array
+      const actualFiles = files
+        .map((f) => f.file)
+        .filter((file): file is File => file instanceof File);
 
-      console.log('Files uploaded successfully');
+      if (actualFiles.length === 0) {
+        throw new Error('No valid files to upload');
+      }
+
+      // Validate files before upload
+      const validation = validateFiles(actualFiles, {
+        maxFileSize: 50 * 1024 * 1024, // 50MB per file
+        maxFiles: 100, // Maximum 100 files
+      });
+
+      if (!validation.isValid) {
+        throw new Error(
+          `File validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      console.log(
+        `Uploading ${validation.validFiles.length} files to project ${targetProjectId}`,
+      );
+
+      try {
+        await uploadFilesToProject(targetProjectId, validation.validFiles);
+        console.log('Files uploaded successfully');
+
+        // Refresh projects to update task counts
+        await refetch();
+      } catch (error) {
+        console.error('Upload failed:', error);
+        throw error;
+      }
     },
-    [],
+    [selectedProjectId, refetch],
   );
   const handleDownload = useCallback(() => {}, []);
 
@@ -111,6 +145,9 @@ export default function LabelStudioPage() {
         onOpenChange={setUploadDialogOpen}
         title="Upload Project Files"
         description="Select files to upload to your project"
+        projects={projects?.map((p) => ({ id: p.id, title: p.title })) || []}
+        selectedProjectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
         onUpload={handleFileUpload}
       />
     </div>
