@@ -5,11 +5,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { CopyPlus, Edit, Ellipsis, Trash2 } from 'lucide-react';
+import { CopyPlusIcon, DownloadIcon, Edit3Icon, Ellipsis, Trash2Icon } from 'lucide-react';
 
-export function ProjectCardDropdown({ onEdit }: { onEdit?: () => void }) {
+export function ProjectCardDropdown({
+  onEditAction,
+  onExportAction,
+}: {
+  onEditAction?: () => void;
+  onExportAction?: () => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -26,10 +32,10 @@ export function ProjectCardDropdown({ onEdit }: { onEdit?: () => void }) {
         <DropdownMenuItem
           onClick={(e) => {
             e.stopPropagation();
-            onEdit?.();
+            onEditAction?.();
           }}
         >
-          <Edit className="mr-2 h-4 w-4" />
+          <Edit3Icon className="mr-2 h-4 w-4" />
           Edit
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -38,17 +44,25 @@ export function ProjectCardDropdown({ onEdit }: { onEdit?: () => void }) {
             console.log('Duplicate');
           }}
         >
-          <CopyPlus className="mr-2 h-4 w-4" />
+          <CopyPlusIcon className="mr-2 h-4 w-4" />
           Duplicate
         </DropdownMenuItem>
         <DropdownMenuItem
-          variant="destructive"
+          onClick={(e) => {
+            e.stopPropagation();
+            onExportAction?.();
+          }}
+        >
+          <DownloadIcon className="mr-2 h-4 w-4" />
+          Export
+        </DropdownMenuItem>
+        <DropdownMenuItem
           onClick={(e) => {
             e.stopPropagation();
             console.log('Delete');
           }}
         >
-          <Trash2 className="mr-2 h-4 w-4" />
+          <Trash2Icon className="mr-2 h-4 w-4" />
           Delete
         </DropdownMenuItem>
       </DropdownMenuContent>

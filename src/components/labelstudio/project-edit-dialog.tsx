@@ -40,12 +40,14 @@ export default function ProjectEditDialog({
   open,
   setIsOpen,
   onSubmit,
+  onExport,
   loading = false,
 }: {
   project: Project;
   open: boolean;
   setIsOpen: (open: boolean) => void;
   onSubmit: (values: z.infer<typeof formSchema>) => void;
+  onExport?: (project: Project) => void;
   loading?: boolean;
 }) {
   const form = useForm<z.infer<typeof formSchema>>({
