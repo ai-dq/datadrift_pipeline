@@ -99,6 +99,49 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
     redirect: 'manual', // Handle redirects manually
   });
 
+  console.debug('📥 Response status:', fetchResponse.status);
+  console.debug('📥 Response headers:', Object.fromEntries(fetchResponse.headers.entries()));
+
+  // Handle redirects
+  if (fetchResponse.status >= 300 && fetchResponse.status < 400) {
+    const location = fetchResponse.headers.get('location');
+    console.debug('🔄 Redirect detected to:', location);
+    
+    if (location) {
+      // If it's a relative path, construct the full URL
+      let redirectUrl: URL;
+      try {
+        // Try parsing as absolute URL first
+        redirectUrl = new URL(location);
+      } catch {
+        // If it fails, treat it as a relative path
+        redirectUrl = new URL(location, handlingRequest.url);
+      }
+      
+      console.debug('🔄 Full redirect URL:', redirectUrl.toString());
+      
+      // For login redirects, we should follow them
+      if (handlingRequest.nextUrl.pathname.includes('/user/login')) {
+        // Follow the redirect
+        const cleanHeaders = Object.fromEntries(headers.entries());
+        // Remove content-type for GET request
+        delete cleanHeaders['content-type'];
+        
+        const redirectResponse = await fetch(redirectUrl.toString(), {
+          method: 'GET',
+          headers: cleanHeaders,
+          credentials: 'include',
+        });
+        
+        return new NextResponse(redirectResponse.body, {
+          status: redirectResponse.status,
+          statusText: redirectResponse.statusText,
+          headers: redirectResponse.headers,
+        });
+      }
+    }
+  }
+
   // For SSE responses, stream directly without buffering
   const contentType = fetchResponse.headers.get('content-type');
   let ResponseType = contentType?.includes('text/event-stream')
