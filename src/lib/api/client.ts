@@ -150,7 +150,18 @@ export class ApiClient {
 
     // Add body for non-GET requests
     if (body && method !== 'GET') {
-      config.body = body instanceof FormData ? body : JSON.stringify(body);
+      if (body instanceof FormData) {
+        config.body = body;
+        // Remove Content-Type header to let browser set it with boundary for multipart/form-data
+        delete requestHeaders['Content-Type'];
+        config.headers = requestHeaders; // Update config.headers after deletion
+      } else if (typeof body === 'string') {
+        // If body is already a string (like URL-encoded form data), use it as is
+        config.body = body;
+      } else {
+        // Otherwise, stringify as JSON
+        config.body = JSON.stringify(body);
+      }
     }
     return {
       url: requestUrl,

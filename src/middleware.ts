@@ -54,10 +54,49 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
 
   // Step Final. Make fetch get the response and handle cookies
   // NextResponse.rewrite() doesn't work for SSE responses, so we need to use fetch directly
-  const fetchResponse = await fetch(handlingRequest, {
+
+  // Prepare the body based on the request method
+  let body = undefined;
+  if (handlingRequest.method !== 'GET' && handlingRequest.method !== 'HEAD') {
+    // Clone the request to preserve the body stream
+    const clonedRequest = handlingRequest.clone();
+
+    // Check if the content-type is form data
+    const contentType = handlingRequest.headers.get('content-type') || '';
+
+    console.debug('📝 Request Content-Type:', contentType);
+    console.debug('📝 Request Method:', handlingRequest.method);
+    console.debug('📝 Request URL:', handlingRequest.url);
+
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      // For URL-encoded form data, read as text
+      body = await clonedRequest.text();
+      console.debug('📝 Body as URL-encoded:', body.substring(0, 200));
+    } else if (contentType.includes('multipart/form-data')) {
+      // For multipart form data, read as blob
+      body = await clonedRequest.blob();
+      console.debug('📝 Body as multipart form-data');
+    } else if (contentType.includes('application/json')) {
+      // For JSON, read as text
+      body = await clonedRequest.text();
+      console.debug('📝 Body as JSON:', body.substring(0, 200));
+    } else {
+      // For other content types, read as array buffer
+      body = await clonedRequest.arrayBuffer();
+      console.debug('📝 Body as ArrayBuffer, size:', body.byteLength);
+    }
+  }
+
+  console.debug(
+    '🚀 Fetching with headers:',
+    Object.fromEntries(headers.entries()),
+  );
+
+  const fetchResponse = await fetch(handlingRequest.url, {
     method: handlingRequest.method,
     headers,
-    body: handlingRequest.body,
+    body,
+    redirect: 'manual', // Handle redirects manually
   });
 
   // For SSE responses, stream directly without buffering
