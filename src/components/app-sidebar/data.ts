@@ -18,6 +18,7 @@ export const data = {
       title: 'Models',
       url: '/dashboard/models',
       icon: BrainCircuit,
+      isActive: true,
       items: [
         {
           title: 'Training',
@@ -29,6 +30,7 @@ export const data = {
       title: 'Monitoring',
       url: '/dashboard/monitoring',
       icon: BookOpen,
+      isActive: true,
       items: [
         {
           title: 'Default Models',
@@ -48,6 +50,7 @@ export const data = {
       title: 'Playground',
       url: '/services/gradio',
       icon: SquareTerminal,
+      isActive: true,
       items: [],
     },
   ],
