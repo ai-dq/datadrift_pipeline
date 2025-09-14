@@ -5,17 +5,20 @@ import { ProjectCardCollection } from '@/components/labelstudio/project-card-col
 import { Button } from '@/components/ui/button';
 import { Project } from '@/entities/labelstudio';
 import { useProjects, useUpdateProject } from '@/hooks/network/projects';
-import { uploadFilesToProject, validateFiles } from '@/lib/api/utils/file-upload';
-import { 
-  createExportSnapshot, 
-  downloadExportSnapshot, 
-  deleteExportSnapshot 
+import {
+  createExportSnapshot,
+  deleteExportSnapshot,
+  downloadExportSnapshot,
 } from '@/lib/api/endpoints/projects';
+import {
+  uploadFilesToProject,
+  validateFiles,
+} from '@/lib/api/utils/file-upload';
 import { Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
-export default function LabelStudioPage() {
+export default function AnnotationProjectPage() {
   const router = useRouter();
   const { data: projects, refetch } = useProjects();
   const { requestFn: updateProject } = useUpdateProject();
@@ -103,40 +106,42 @@ export default function LabelStudioPage() {
 
   const handleProjectExport = useCallback(async (project: Project) => {
     try {
-      console.log(`Starting export for project ${project.title} (${project.id})`);
-      
+      console.log(
+        `Starting export for project ${project.title} (${project.id})`,
+      );
+
       // Step 1: Create export snapshot
       const snapshot = await createExportSnapshot(project.id, {
         task_filter_options: {
-          annotated: 'only'
-        }
+          annotated: 'only',
+        },
       });
-      
+
       console.log('Export snapshot created:', snapshot);
-      
+
       // Step 2: Poll until snapshot is completed (max 30 seconds)
       let attempts = 0;
       const maxAttempts = 30;
-      
+
       while (attempts < maxAttempts && snapshot.status !== 'completed') {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
         attempts++;
-        
+
         // In a real implementation, you might want to poll the snapshot status
         // For now, we'll assume it completes quickly
         break;
       }
-      
+
       if (snapshot.status !== 'completed' && attempts >= maxAttempts) {
         throw new Error('Export snapshot did not complete in time');
       }
-      
+
       // Step 3: Download the export file
       const blob = await downloadExportSnapshot(project.id, snapshot.id);
-      
+
       // Step 4: Download with user-selected location
       const fileName = `${project.title}-export-${new Date().toISOString().split('T')[0]}.zip`;
-      
+
       // Try to use the modern File System Access API
       if ('showSaveFilePicker' in window && window.showSaveFilePicker) {
         try {
@@ -146,19 +151,22 @@ export default function LabelStudioPage() {
               {
                 description: 'ZIP files',
                 accept: {
-                  'application/zip': ['.zip']
-                }
-              }
-            ]
+                  'application/zip': ['.zip'],
+                },
+              },
+            ],
           });
-          
+
           const writable = await fileHandle.createWritable();
           await writable.write(blob);
           await writable.close();
         } catch (error) {
           // User cancelled or API not supported, fall back to default download
           if (error instanceof Error && error.name !== 'AbortError') {
-            console.warn('File System Access API failed, falling back to default download:', error);
+            console.warn(
+              'File System Access API failed, falling back to default download:',
+              error,
+            );
             downloadFallback(blob, fileName);
           }
         }
@@ -166,7 +174,7 @@ export default function LabelStudioPage() {
         // Fallback for browsers that don't support File System Access API
         downloadFallback(blob, fileName);
       }
-      
+
       function downloadFallback(blob: Blob, filename: string) {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -177,10 +185,10 @@ export default function LabelStudioPage() {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       }
-      
+
       // Step 5: Clean up - delete the snapshot
       await deleteExportSnapshot(project.id, snapshot.id);
-      
+
       console.log('Project export completed and cleaned up successfully');
     } catch (error) {
       console.error('Project export failed:', error);
