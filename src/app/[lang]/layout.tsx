@@ -1,6 +1,6 @@
 import { AuthProvider } from '@/contexts/AuthContext';
 import type { Metadata } from 'next';
-import './globals.css';
+import '../globals.css';
 import { JetBrains_Mono } from 'next/font/google';
 import React from 'react';
 

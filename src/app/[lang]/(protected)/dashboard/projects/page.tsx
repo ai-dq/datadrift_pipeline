@@ -1,19 +1,16 @@
 'use client';
 
+import {
+  createExportSnapshot,
+  deleteExportSnapshot,
+  downloadExportSnapshot,
+} from '@/api/endpoints/projects';
+import { uploadFilesToProject, validateFiles } from '@/api/utils/file-upload';
 import { FileUploadDialog } from '@/components/file-upload/file-upload-dialog';
 import { ProjectCardCollection } from '@/components/labelstudio/project-card-collection';
 import { Button } from '@/components/ui/button';
 import { Project } from '@/entities/labelstudio';
 import { useProjects, useUpdateProject } from '@/hooks/network/projects';
-import {
-  createExportSnapshot,
-  deleteExportSnapshot,
-  downloadExportSnapshot,
-} from '@/lib/api/endpoints/projects';
-import {
-  uploadFilesToProject,
-  validateFiles,
-} from '@/lib/api/utils/file-upload';
 import { Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
