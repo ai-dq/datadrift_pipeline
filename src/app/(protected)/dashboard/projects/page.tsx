@@ -123,15 +123,6 @@ export default function AnnotationProjectPage() {
       let attempts = 0;
       const maxAttempts = 30;
 
-      while (attempts < maxAttempts && snapshot.status !== 'completed') {
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
-        attempts++;
-
-        // In a real implementation, you might want to poll the snapshot status
-        // For now, we'll assume it completes quickly
-        break;
-      }
-
       if (snapshot.status !== 'completed' && attempts >= maxAttempts) {
         throw new Error('Export snapshot did not complete in time');
       }
@@ -201,8 +192,10 @@ export default function AnnotationProjectPage() {
       {/* Header */}
       <div className="flex flex-row justify-between items-center">
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Label Studio</h1>
-          <p className="text-sm">Manage and monitor your AI models</p>
+          <h1 className="mb-2 text-3xl font-bold">Annotation Projects</h1>
+          <p className="text-sm">
+            Annotate images or documents for training OCR models
+          </p>
         </div>
         <div className="flex flex-row gap-2 mr-4">
           <Button
