@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ChevronRight, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useI18n } from '@/contexts/I18nContext';
 
 export function NavMain({
   items,
@@ -32,6 +33,7 @@ export function NavMain({
     }[];
   }[];
 }) {
+  const { t } = useI18n();
   return (
     <SidebarGroup>
       <SidebarMenu>
@@ -49,7 +51,7 @@ export function NavMain({
                   <CollapsibleTrigger asChild className="size-8">
                     <SidebarMenuAction className="data-[state=open]:rotate-90">
                       <ChevronRight />
-                      <span className="sr-only">Toggle</span>
+                      <span className="sr-only">{t('sidebar.toggle')}</span>
                     </SidebarMenuAction>
                   </CollapsibleTrigger>
                   <CollapsibleContent>

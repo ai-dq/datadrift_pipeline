@@ -29,6 +29,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { ModelTypeColors } from '../colors/model-type';
 import ModelTypeBadge from '../model-type-badge';
+import { useI18n } from '@/contexts/I18nContext';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -50,6 +51,7 @@ export default function ProjectEditDialog({
   onExport?: (project: Project) => void;
   loading?: boolean;
 }) {
+  const { t } = useI18n();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -71,7 +73,7 @@ export default function ProjectEditDialog({
             className="grid gap-4"
           >
             <DialogHeader>
-              <DialogTitle>Edit Project</DialogTitle>
+              <DialogTitle>{t('common.edit')} Project</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4">
               <FormField
@@ -103,7 +105,7 @@ export default function ProjectEditDialog({
                               'border-transparent',
                             ].join(' ')}
                           >
-                            {ModelType.presentationName(field.value)}
+                            {t(`modelType.${field.value}`)}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
@@ -131,7 +133,7 @@ export default function ProjectEditDialog({
                 className="cursor-pointer"
                 loading={loading}
               >
-                Save
+                {t('common.save')}
               </Button>
             </DialogFooter>
           </form>

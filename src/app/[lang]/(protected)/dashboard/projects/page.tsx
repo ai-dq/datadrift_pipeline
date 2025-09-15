@@ -17,6 +17,7 @@ import { useProjects, useUpdateProject } from '@/hooks/network/projects';
 import { Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
 
 export default function LabelingPage({
   params,
@@ -25,6 +26,7 @@ export default function LabelingPage({
 }) {
   const { lang } = React.use(params);
   const dict = getClientDictionary(lang);
+  const { t } = useI18n();
 
   const router = useRouter();
   const { data: projects, refetch } = useProjects();
@@ -200,9 +202,7 @@ export default function LabelingPage({
       <div className="flex flex-row justify-between items-center">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">{dict.labeling.title}</h1>
-          <p className="text-sm">
-            Annotate images or documents for training OCR models
-          </p>
+          <p className="text-sm">{t('labeling.description')}</p>
         </div>
         <div className="flex flex-row gap-2 mr-4">
           <Button
@@ -211,7 +211,7 @@ export default function LabelingPage({
             className="w-28 hover:cursor-pointer"
           >
             <Upload className="size-4" />
-            Upload
+            {t('labeling.upload')}
           </Button>
         </div>
       </div>
@@ -232,8 +232,8 @@ export default function LabelingPage({
       <FileUploadDialog
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
-        title="Upload Project Files"
-        description="Select files to upload to your project"
+        title={t('labeling.uploadDialogTitle')}
+        description={t('labeling.uploadDialogDescription')}
         projects={projects?.map((p) => ({ id: p.id, title: p.title })) || []}
         selectedProjectId={selectedProjectId}
         onProjectChange={setSelectedProjectId}

@@ -1,6 +1,8 @@
 import type { SupportedLocales } from '@/app/i18n';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { I18nProvider } from '@/contexts/I18nContext';
 import type { Metadata } from 'next';
+import { getDictionary } from '@/app/dictionaries';
 import '../globals.css';
 import { JetBrains_Mono } from 'next/font/google';
 import React from 'react';
@@ -14,11 +16,18 @@ export async function generateStaticParams() {
   return [{ lang: 'en-US' }, { lang: 'de' }];
 }
 
-export const metadata: Metadata = {
-  title: 'Q-OCR Dashboard',
-  description:
-    'The Q-OCR Dashboard is a powerful tool for converting images to text.',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: SupportedLocales }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  const dict = await getDictionary(lang);
+  return {
+    title: dict.app.title,
+    description: dict.app.description,
+  };
+}
 
 export default function RootLayout({
   children,
@@ -31,9 +40,11 @@ export default function RootLayout({
   return (
     <html lang={lang} className={`${jetbrainsMono.variable}`}>
       <body className={'antialiased bg-sidebar-background'}>
-        <AuthProvider>
-          <main className="flex-1">{children}</main>
-        </AuthProvider>
+        <I18nProvider locale={lang}>
+          <AuthProvider>
+            <main className="flex-1">{children}</main>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );

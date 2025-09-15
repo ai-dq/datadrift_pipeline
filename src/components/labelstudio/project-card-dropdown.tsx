@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DownloadIcon, Edit3Icon, Ellipsis, Trash2Icon } from 'lucide-react';
+import { useI18n } from '@/contexts/I18nContext';
 
 export function ProjectCardDropdown({
   onEditAction,
@@ -17,6 +18,7 @@ export function ProjectCardDropdown({
   onEditAction?: () => void;
   onExportAction?: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -37,7 +39,7 @@ export function ProjectCardDropdown({
           }}
         >
           <Edit3Icon className="mr-2 h-4 w-4" />
-          Edit
+          {t('common.edit')}
         </DropdownMenuItem>
         {/*<DropdownMenuItem*/}
         {/*  onClick={(e) => {*/}
@@ -55,7 +57,7 @@ export function ProjectCardDropdown({
           }}
         >
           <DownloadIcon className="mr-2 h-4 w-4" />
-          Download
+          {t('common.download')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -66,7 +68,7 @@ export function ProjectCardDropdown({
           variant="destructive"
         >
           <Trash2Icon className="mr-2 h-4 w-4" />
-          Delete
+          {t('common.delete')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
