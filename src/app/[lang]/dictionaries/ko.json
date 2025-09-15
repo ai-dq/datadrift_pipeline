@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Q-OCR 대시보드",
+    "title": "Q-OCR Dashboard",
     "description": "Q-OCR 대시보드는 이미지를 텍스트로 변환하는 강력한 도구입니다."
   },
   "nav": {
@@ -8,17 +8,17 @@
     "models": "모델",
     "training": "학습",
     "monitoring": "모니터링",
-    "defaultModels": "기본 모델",
+    "defaultModels": "기본 모델 관리",
     "trainingStatus": "학습 상태",
     "logs": "로그",
-    "playground": "플레이그라운드"
+    "playground": "데모"
   },
   "modelType": {
-    "layout": "레이아웃 감지",
-    "ocrcls": "OCR 분류",
-    "ocrrec": "OCR 인식",
-    "ocrdet": "OCR 검출",
-    "tabrec": "테이블 인식"
+    "layout": "Layout Detection",
+    "ocrcls": "OCR Classification",
+    "ocrrec": "OCR Recognition",
+    "ocrdet": "OCR Detection",
+    "tabrec": "Table Recognition"
   },
   "auth": {
     "login": "로그인",
@@ -29,7 +29,7 @@
     "loginButton": "로그인"
   },
   "labeling": {
-    "title": "레이블링 프로젝트",
+    "title": "레이블링 워크스페이스",
     "description": "OCR 모델 학습을 위한 이미지/문서를 주석 처리합니다",
     "upload": "업로드",
     "uploadDialogTitle": "프로젝트 파일 업로드",
@@ -84,10 +84,10 @@
     "modelVersions": "모델 버전",
     "totalVersions": "총 {count}개 버전",
     "columns": {
-      "epochs": "에폭",
-      "trainingTime": "학습 시간",
-      "precision": "정밀도",
-      "recall": "재현율"
+      "epochs": "Epochs",
+      "trainingTime": "Training Time",
+      "precision": "Precision",
+      "recall": "Recall"
     }
   },
   "monitoring": {
@@ -95,7 +95,7 @@
       "title": "학습 모니터링",
       "description": "모델 학습 활동을 모니터링하고 추적합니다",
       "stats": {
-        "running": { "title": "진행 중", "description": "현재 학습 중" },
+        "running": { "title": "학습 중", "description": "현재 학습 중" },
         "completed": { "title": "완료", "description": "성공적으로 완료됨" },
         "failed": { "title": "실패", "description": "실패한 학습 작업" },
         "pending": { "title": "대기", "description": "시작 대기 중" }
@@ -133,23 +133,23 @@
     "title": "모델 학습",
     "description": "데이터와 모델을 선택하여 학습 구성을 설정하세요",
     "selectionsTitle": "선택 항목",
-    "selectionsSub": "학습에 사용할 데이터셋과 모델을 선택하세요",
+    "selectionsSub": "학습에 사용할 레이블링 워크스페이스와 모델을 선택하세요",
     "taskTitle": "작업",
-    "taskDescription": "머신러닝 작업을 선택하세요",
+    "taskDescription": "작업 유형을 선택하세요",
     "taskType": "작업 유형",
     "selectTaskTypePlaceholder": "작업 유형을 선택하세요",
     "dataTitle": "데이터",
     "dataDescription": "레이블링 프로젝트를 선택하세요",
-    "labelingProjectLabel": "레이블링 프로젝트",
+    "labelingProjectLabel": "Labeling Project",
     "selectLabelingProjectPlaceholder": "레이블링 프로젝트를 선택하세요",
-    "selectTaskFirstPlaceholder": "먼저 작업을 선택하세요",
+    "selectTaskFirstPlaceholder": "먼저 작업 유형을 선택하세요",
     "modelTitle": "모델",
-    "modelDescription": "모델 아키텍처와 버전을 선택하세요",
-    "modelArchitectureLabel": "모델 아키텍처",
+    "modelDescription": "모델 architecture와 버전을 선택하세요",
+    "modelArchitectureLabel": "Model Architecture",
     "selectModelPlaceholder": "모델을 선택하세요",
-    "modelVersionLabel": "모델 버전",
+    "modelVersionLabel": "Model Version",
     "selectVersionPlaceholder": "버전을 선택하세요",
-    "samples": "샘플"
+    "samples": "samples"
   },
   "training": {
     "button": {
@@ -158,8 +158,8 @@
     },
     "status": {
       "title": "학습 상태",
-      "currentEpoch": "현재 에폭:",
-      "trainingLoss": "학습 손실:",
+      "currentEpoch": "Current Epoch:",
+      "trainingLoss": "Training Loss:",
       "na": "N/A",
       "progressWillBeDisplayed": "여기에 학습 진행 상황이 표시됩니다.",
       "clickStart": "\"학습 시작\" 버튼을 클릭하여 학습을 시작할 수 있습니다.",
@@ -167,8 +167,8 @@
     }
   },
   "sidebar": {
-    "dashboard": "대시보드",
-    "toggle": "토글"
+    "dashboard": "Dashboard",
+    "toggle": "Toggle"
   },
   "common": {
     "cancel": "취소",
