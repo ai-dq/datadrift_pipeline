@@ -1,11 +1,14 @@
 'use client';
 
+import React from 'react';
 import {
   createExportSnapshot,
   deleteExportSnapshot,
   downloadExportSnapshot,
 } from '@/api/endpoints/projects';
 import { uploadFilesToProject, validateFiles } from '@/api/utils/file-upload';
+import type { SupportedLocales } from '@/app/i18n';
+import { getClientDictionary } from '@/app/dictionaries.client';
 import { FileUploadDialog } from '@/components/file-upload/file-upload-dialog';
 import { ProjectCardCollection } from '@/components/labelstudio/project-card-collection';
 import { Button } from '@/components/ui/button';
@@ -15,7 +18,14 @@ import { Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
-export default function LabelingPage() {
+export default function LabelingPage({
+  params,
+}: {
+  params: Promise<{ lang: SupportedLocales }>;
+}) {
+  const { lang } = React.use(params);
+  const dict = getClientDictionary(lang);
+
   const router = useRouter();
   const { data: projects, refetch } = useProjects();
   const { requestFn: updateProject } = useUpdateProject();
@@ -189,7 +199,7 @@ export default function LabelingPage() {
       {/* Header */}
       <div className="flex flex-row justify-between items-center">
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Annotation Projects</h1>
+          <h1 className="mb-2 text-3xl font-bold">{dict.labeling.title}</h1>
           <p className="text-sm">
             Annotate images or documents for training OCR models
           </p>

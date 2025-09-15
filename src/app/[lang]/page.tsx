@@ -1,13 +1,14 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import React from 'react';
 
-export default async function RootPage({
+export default function RootPage({
   params,
 }: {
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }) {
-  const { lang } = params;
-  const cookieStore = await cookies();
+  const { lang } = React.use(params);
+  const cookieStore = React.use(cookies());
 
   // Consider authenticated when both LS tokens exist
   const isAuthed =
