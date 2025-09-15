@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const isDev = process.env.NODE_ENV !== 'production';
+const logInfo = (...args: any[]) => {
+  if (isDev) console.info(...args);
+};
+const logDebug = (...args: any[]) => {
+  if (isDev) console.debug(...args);
+};
+
 // Locales used in route prefixes must match the app route segment: src/app/[lang]
 // Our app uses short codes ('ko', 'en'), not region codes ('ko-KR', 'en-US').
 let locales = ['ko', 'en'];
@@ -31,7 +39,7 @@ export const config = {
 
 export async function middleware(request: NextRequest): Promise<Response> {
   const { pathname } = request.nextUrl;
-  console.info('Middleware called for path:', pathname);
+  logInfo('Middleware called for path:', pathname);
 
   const pathnameHasLocale = locales.some(
     (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
@@ -51,7 +59,7 @@ export async function middleware(request: NextRequest): Promise<Response> {
   const locale = getLocale(request);
   const url = request.nextUrl.clone();
   url.pathname = `/${locale}${pathname}`;
-  console.info('Redirecting to localized path:', url.pathname);
+  logInfo('Redirecting to localized path:', url.pathname);
   return NextResponse.redirect(url);
 }
 
@@ -82,14 +90,14 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
 
   // Step 1. Rewrite external requests to actual API endpoints
   handlingRequest = rewriteExternalRequest(handlingRequest);
-  console.debug('1️⃣ Rewritten request:', handlingRequest.nextUrl.pathname);
+  logDebug('1️⃣ Rewritten request:', handlingRequest.nextUrl.pathname);
 
   // Step 2. Add Authorization header to the request
   const { request: newRequest, headers: newHeaders } =
     await attachAuthorizationHeader(handlingRequest);
   handlingRequest = newRequest;
   const headers = newHeaders;
-  console.debug(
+  logDebug(
     '2️⃣ Added Authorization header:',
     handlingRequest.nextUrl.pathname,
   );
@@ -106,30 +114,30 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
     // Check if the content-type is form data
     const contentType = handlingRequest.headers.get('content-type') || '';
 
-    console.debug('📝 Request Content-Type:', contentType);
-    console.debug('📝 Request Method:', handlingRequest.method);
-    console.debug('📝 Request URL:', handlingRequest.url);
+    logDebug('📝 Request Content-Type:', contentType);
+    logDebug('📝 Request Method:', handlingRequest.method);
+    logDebug('📝 Request URL:', handlingRequest.url);
 
     if (contentType.includes('application/x-www-form-urlencoded')) {
       // For URL-encoded form data, read as text
       body = await clonedRequest.text();
-      console.debug('📝 Body as URL-encoded:', body.substring(0, 200));
+      logDebug('📝 Body as URL-encoded:', body.substring(0, 200));
     } else if (contentType.includes('multipart/form-data')) {
       // For multipart form data, read as blob
       body = await clonedRequest.blob();
-      console.debug('📝 Body as multipart form-data');
+      logDebug('📝 Body as multipart form-data');
     } else if (contentType.includes('application/json')) {
       // For JSON, read as text
       body = await clonedRequest.text();
-      console.debug('📝 Body as JSON:', body.substring(0, 200));
+      logDebug('📝 Body as JSON:', body.substring(0, 200));
     } else {
       // For other content types, read as array buffer
       body = await clonedRequest.arrayBuffer();
-      console.debug('📝 Body as ArrayBuffer, size:', body.byteLength);
+      logDebug('📝 Body as ArrayBuffer, size:', (body as ArrayBuffer).byteLength);
     }
   }
 
-  console.debug(
+  logDebug(
     '🚀 Fetching with headers:',
     Object.fromEntries(headers.entries()),
   );
@@ -141,13 +149,13 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
     redirect: 'manual', // Handle redirects manually
   });
 
-  console.debug('📥 Response status:', fetchResponse.status);
-  console.debug('📥 Response headers:', Object.fromEntries(fetchResponse.headers.entries()));
+  logDebug('📥 Response status:', fetchResponse.status);
+  logDebug('📥 Response headers:', Object.fromEntries(fetchResponse.headers.entries()));
 
   // Handle redirects
   if (fetchResponse.status >= 300 && fetchResponse.status < 400) {
     const location = fetchResponse.headers.get('location');
-    console.debug('🔄 Redirect detected to:', location);
+    logDebug('🔄 Redirect detected to:', location);
     
     if (location) {
       // If it's a relative path, construct the full URL
@@ -160,7 +168,7 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
         redirectUrl = new URL(location, handlingRequest.url);
       }
       
-      console.debug('🔄 Full redirect URL:', redirectUrl.toString());
+      logDebug('🔄 Full redirect URL:', redirectUrl.toString());
       
       // For login redirects, we should follow them
       if (handlingRequest.nextUrl.pathname.includes('/user/login')) {
@@ -215,7 +223,7 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
  * This function gets the request with the locale prefix and checks if the user is trying to access protected routes.
  */
 function handlePageRoutes(request: NextRequest): NextResponse {
-  console.info('Handling page routes: ' + request.nextUrl.pathname);
+  logInfo('Handling page routes: ' + request.nextUrl.pathname);
   const { pathname } = request.nextUrl;
 
   // Check if user is trying to access protected routes (accounting for locale prefix)
@@ -246,7 +254,7 @@ function handlePageRoutes(request: NextRequest): NextResponse {
  */
 function rewriteExternalRequest(request: NextRequest): NextRequest {
   function logRequest(request: NextRequest, verb: string) {
-    console.info(
+    logInfo(
       `🚦 🛜 ${verb} HTTP request: ` +
         JSON.stringify({
           Host: request.nextUrl.host,
@@ -302,7 +310,7 @@ async function attachAuthorizationHeader(request: NextRequest): Promise<{
         request.nextUrl.pathname.includes(path),
       )
     ) {
-      console.debug('Skipping refreshing token: ', request.nextUrl.pathname);
+      logDebug('Skipping refreshing token: ', request.nextUrl.pathname);
       return true;
     }
     return false;

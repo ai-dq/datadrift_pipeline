@@ -1,6 +1,8 @@
 import { getCookie } from '@/utils/cookie.util';
 import { useCallback, useState } from 'react';
 
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
 /** HTTP method types */
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -66,8 +68,18 @@ export class ApiClient {
   ): Promise<T> {
     const { url: requestURL, config } = this.buildRequestURL(options, endpoint);
 
+    // Default timeout for requests if no signal provided
+    const controller = !options.signal ? new AbortController() : undefined;
+    const timeoutMs = 15000;
+    const timeoutId = controller
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : undefined;
+
     try {
-      const response = await fetch(requestURL, config);
+      const response = await fetch(requestURL, {
+        ...config,
+        signal: options.signal ?? controller?.signal,
+      });
 
       if (!response.ok) {
         await this.handleErrorResponse(response);
@@ -108,6 +120,9 @@ export class ApiClient {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       throw new ApiError(0, 'Network error or request failed', errorMessage);
+    }
+    finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 
@@ -709,7 +724,7 @@ export class ApiClient {
     if (status !== 401) return;
 
     const redirectTo = this.extractRedirectUrl(parsedContent) || '/login';
-    console.log('[API] Authentication required, redirecting to:', redirectTo);
+    if (IS_DEV) console.log('[API] Authentication required, redirecting to:', redirectTo);
     window.location.href = redirectTo;
   }
 
