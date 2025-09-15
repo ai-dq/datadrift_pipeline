@@ -1,12 +1,20 @@
-import Image from "next/image";
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-export default function Home() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Loading...</p>
-      </div>
-    </div>
-  );
+export default async function RootPage({
+  params,
+}: {
+  params: { lang: string };
+}) {
+  const { lang } = params;
+  const cookieStore = await cookies();
+
+  // Consider authenticated when both LS tokens exist
+  const isAuthed =
+    cookieStore.has('ls_access_token') && cookieStore.has('ls_refresh_token');
+
+  if (isAuthed) {
+    redirect(`/${lang}/dashboard`);
+  }
+  redirect(`/${lang}/login`);
 }

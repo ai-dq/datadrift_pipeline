@@ -15,7 +15,7 @@ import { Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
-export default function AnnotationProjectPage() {
+export default function LabelingPage() {
   const router = useRouter();
   const { data: projects, refetch } = useProjects();
   const { requestFn: updateProject } = useUpdateProject();
