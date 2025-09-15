@@ -9,6 +9,7 @@ import { useTrainingSetup } from '@/hooks/train/use-training-setup';
 import { useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useI18n } from '@/contexts/I18nContext';
+import PageHeader from '@/components/models/page-header';
 
 function ModelTrainingPageContent() {
   const { t } = useI18n();
@@ -57,11 +58,6 @@ function ModelTrainingPageContent() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{t('trainingPage.title')}</h1>
-        <p className="text-muted-foreground">{t('trainingPage.description')}</p>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
           <TrainingSelectionPanel
@@ -102,8 +98,14 @@ function ModelTrainingPageContent() {
 }
 
 export default function ModelTrainingPage() {
+  const { t } = useI18n();
   return (
     <Suspense fallback={<div className="p-6">Loading training setup...</div>}>
+      <PageHeader
+        title={t('trainingPage.title')}
+        subtitle={t('trainingPage.description')}
+        showSettings={false}
+      />
       <ModelTrainingPageContent />
     </Suspense>
   );
