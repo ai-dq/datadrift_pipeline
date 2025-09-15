@@ -198,9 +198,12 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
 
   const validAccessToken = handlingRequest.cookies.get('ls_access_token');
   if (validAccessToken) {
-    response.headers.set(
+    const isProd = process.env.NODE_ENV === 'production';
+    response.headers.append(
       'Set-Cookie',
-      `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; SameSite=lax`,
+      `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; SameSite=Lax${
+        isProd ? '; Secure' : ''
+      }`,
     );
   }
 
