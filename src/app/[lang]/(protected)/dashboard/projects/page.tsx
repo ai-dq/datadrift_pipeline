@@ -22,10 +22,11 @@ import { useI18n } from '@/contexts/I18nContext';
 export default function LabelingPage({
   params,
 }: {
-  params: Promise<{ lang: SupportedLocales }>;
+  params: Promise<{ lang: string }>;
 }) {
   const { lang } = React.use(params);
-  const dict = getClientDictionary(lang);
+  const locale: SupportedLocales = lang === 'ko' ? 'ko' : 'en';
+  const dict = getClientDictionary(locale);
   const { t } = useI18n();
 
   const router = useRouter();

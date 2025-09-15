@@ -125,8 +125,44 @@
       "description": "API 호출에 기본으로 선택된 모델입니다."
     },
     "logs": {
-      "title": "컨테이너 로그 모니터링",
-      "description": "실시간 컨테이너 로그 스트리밍 및 모니터링"
+      "title": "로그 모니터링",
+      "description": "실시간 컨테이너 로그 스트리밍 및 모니터링",
+      "config": {
+        "title": "로그 설정",
+        "description": "로그를 확인할 컨테이너를 선택하고, 로그 옵션을 설정하세요"
+      },
+      "container": {
+        "placeholder": "컨테이너 선택",
+        "label": "컨테이너/서비스"
+      },
+      "tailLines": {
+        "label": "Tail 라인",
+        "count": "{count}줄",
+        "all": "전체"
+      },
+      "controls": {
+        "label": "컨트롤",
+        "start": "시작",
+        "stop": "중지",
+        "clear": "지우기"
+      },
+      "viewer": {
+        "title": "라이브 로그",
+        "status": {
+          "streaming": "스트리밍 중",
+          "stopped": "중지됨"
+        },
+        "messages": "총 {count}개 메시지",
+        "hint": {
+          "enterContainer": "컨테이너/서비스 이름을 입력하고 시작을 클릭하여 로그 스트리밍을 시작하세요",
+          "active": "실시간 로그 스트림이 활성화되었습니다",
+          "stopped": "로그 스트림이 중지되었습니다"
+        },
+        "empty": {
+          "waiting": "로그 메시지를 기다리는 중...",
+          "none": "로그 메시지가 없습니다"
+        }
+      }
     }
   },
   "trainingPage": {
@@ -171,6 +207,7 @@
     "toggle": "Toggle"
   },
   "common": {
+    "error": "오류",
     "cancel": "취소",
     "save": "저장",
     "upload": "업로드",
