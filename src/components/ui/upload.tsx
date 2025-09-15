@@ -101,7 +101,7 @@ const getFileIcon = (file: { file: File | { type: string; name: string } }) => {
   return <FileIcon className="size-5 opacity-60" />;
 };
 
-const getFilePreview = (file: {
+const _getFilePreview = (file: {
   file: File | { type: string; name: string; url?: string };
 }) => {
   const fileType = file.file instanceof File ? file.file.type : file.file.type;
