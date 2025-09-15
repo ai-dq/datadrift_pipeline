@@ -13,7 +13,15 @@ export function getSidebarData(t: (key: string) => string) {
         url: '/dashboard/projects',
         icon: Database,
         isActive: true,
-        items: [],
+        items: [
+          {
+            title: t('nav.workspaces'),
+            url: '/dashboard/projects',
+            icon: Database,
+            isActive: true,
+            items: [],
+          },
+        ],
       },
       {
         title: t('nav.models'),
@@ -42,6 +50,10 @@ export function getSidebarData(t: (key: string) => string) {
         isActive: true,
         items: [
           {
+            title: t('nav.playground'),
+            url: '/services/gradio',
+          },
+          {
             title: t('nav.trainingStatus'),
             url: '/dashboard/monitoring/train',
           },
@@ -50,13 +62,6 @@ export function getSidebarData(t: (key: string) => string) {
             url: '/dashboard/monitoring/logs',
           },
         ],
-      },
-      {
-        title: t('nav.playground'),
-        url: '/services/gradio',
-        icon: SquareTerminal,
-        isActive: true,
-        items: [],
       },
     ],
     navSecondary: [],

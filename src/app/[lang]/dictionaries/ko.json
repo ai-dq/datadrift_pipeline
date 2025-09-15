@@ -5,6 +5,7 @@
   },
   "nav": {
     "data": "데이터",
+    "workspaces": "워크스페이스",
     "models": "모델",
     "training": "학습",
     "monitoring": "모니터링",
