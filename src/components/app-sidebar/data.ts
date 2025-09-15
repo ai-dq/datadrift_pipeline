@@ -22,21 +22,25 @@ export function getSidebarData(t: (key: string) => string) {
         isActive: true,
         items: [
           {
+            title: t('nav.models'),
+            url: '/dashboard/models',
+          },
+          {
             title: t('nav.training'),
             url: '/dashboard/models/train',
+          },
+          {
+            title: t('nav.defaultModels'),
+            url: '/dashboard/models/default',
           },
         ],
       },
       {
         title: t('nav.monitoring'),
-        url: '/dashboard/monitoring',
+        url: '/dashboard/monitoring/',
         icon: BookOpen,
         isActive: true,
         items: [
-          {
-            title: t('nav.defaultModels'),
-            url: '/dashboard/monitoring/default',
-          },
           {
             title: t('nav.trainingStatus'),
             url: '/dashboard/monitoring/train',

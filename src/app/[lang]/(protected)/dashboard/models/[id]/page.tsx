@@ -146,8 +146,8 @@ export default function ModelVersionPage({
   if (!model) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-red-600">{t('modelDetail.error')}</h1>
-        <p className="text-gray-500">{t('modelDetail.modelNotFound')}</p>
+        <h1 className="text-3xl font-bold text-red-600">{t('models.detail.error')}</h1>
+        <p className="text-gray-500">{t('models.detail.modelNotFound')}</p>
       </div>
     );
   }
@@ -167,9 +167,9 @@ export default function ModelVersionPage({
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>{t('modelDetail.modelVersions')}</CardTitle>
+              <CardTitle>{t('models.details.modelVersions')}</CardTitle>
               <p className="text-sm text-gray-500">
-                {t('modelDetail.totalVersions', { count: memoizedVersions.length })}
+                {t('models.details.totalVersions', { count: memoizedVersions.length })}
               </p>
             </div>
           </CardHeader>

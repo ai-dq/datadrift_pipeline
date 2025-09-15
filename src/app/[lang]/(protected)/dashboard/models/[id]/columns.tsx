@@ -156,7 +156,7 @@ export const columns = (
     header: () => {
       const EpochsHeader = () => {
         const { t } = useI18n();
-        return <>{t('modelDetail.columns.epochs')}</>;
+        return <>{t('models.details.columns.epochs')}</>;
       };
       return <EpochsHeader />;
     },
@@ -172,7 +172,7 @@ export const columns = (
     header: () => {
       const TrainingTimeHeader = () => {
         const { t } = useI18n();
-        return <>{t('modelDetail.columns.trainingTime')}</>;
+        return <>{t('models.details.columns.trainingTime')}</>;
       };
       return <TrainingTimeHeader />;
     },
@@ -188,7 +188,7 @@ export const columns = (
     header: () => {
       const PrecisionHeader = () => {
         const { t } = useI18n();
-        return <>{t('modelDetail.columns.precision')}</>;
+        return <>{t('models.details.columns.precision')}</>;
       };
       return <PrecisionHeader />;
     },
@@ -204,7 +204,7 @@ export const columns = (
     header: () => {
       const RecallHeader = () => {
         const { t } = useI18n();
-        return <>{t('modelDetail.columns.recall')}</>;
+        return <>{t('models.details.columns.recall')}</>;
       };
       return <RecallHeader />;
     },
