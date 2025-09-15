@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refreshAccessToken as refreshTokenUtil } from '@/lib/api/utils/token.utils';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const logInfo = (...args: any[]) => {
@@ -324,8 +325,9 @@ async function attachAuthorizationHeader(request: NextRequest): Promise<{
     }
     // Get new access token using refresh token
     try {
-      const { access } = await refreshAccessToken(refreshToken);
-      accessToken = access;
+      const refreshed = await refreshTokenUtil(request);
+      if (!refreshed) throw new Error('No access token returned');
+      accessToken = refreshed;
     } catch (error) {
       throw new Error('Failed to refresh access token: ' + error);
     }
@@ -346,38 +348,4 @@ async function attachAuthorizationHeader(request: NextRequest): Promise<{
   };
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<{
-  refresh: string;
-  access: string;
-}> {
-  let host = process.env.NEXT_PUBLIC_HOST;
-  if (host && host.endsWith('/')) {
-    host = host.slice(0, -1);
-  }
-  if (!host) {
-    throw new Error('NEXT_PUBLIC_HOST environment variable is not set');
-  }
-
-  const response = await fetch(`${host}/labelstudio/api/token/refresh`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ refresh: refreshToken }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  if (!data.access || !data.refresh) {
-    throw new Error('Invalid response: missing access or refresh token');
-  }
-
-  return {
-    access: data.access,
-    refresh: data.refresh,
-  };
-}
+// Token refresh logic moved to shared util
