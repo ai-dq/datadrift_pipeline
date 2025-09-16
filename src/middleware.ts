@@ -90,7 +90,12 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
   let handlingRequest = request;
 
   // Step 1. Rewrite external requests to actual API endpoints
-  handlingRequest = rewriteExternalRequest(handlingRequest);
+  const rewritten = rewriteExternalRequest(handlingRequest);
+  if (rewritten instanceof NextResponse) {
+    // Bubble up early failure with a helpful payload instead of throwing.
+    return rewritten;
+  }
+  handlingRequest = rewritten;
   logDebug('1️⃣ Rewritten request:', handlingRequest.nextUrl.pathname);
 
   // Step 2. Add Authorization header to the request
@@ -98,10 +103,7 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
     await attachAuthorizationHeader(handlingRequest);
   handlingRequest = newRequest;
   const headers = newHeaders;
-  logDebug(
-    '2️⃣ Added Authorization header:',
-    handlingRequest.nextUrl.pathname,
-  );
+  logDebug('2️⃣ Added Authorization header:', handlingRequest.nextUrl.pathname);
 
   // Step Final. Make fetch get the response and handle cookies
   // NextResponse.rewrite() doesn't work for SSE responses, so we need to use fetch directly
@@ -134,14 +136,14 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
     } else {
       // For other content types, read as array buffer
       body = await clonedRequest.arrayBuffer();
-      logDebug('📝 Body as ArrayBuffer, size:', (body as ArrayBuffer).byteLength);
+      logDebug(
+        '📝 Body as ArrayBuffer, size:',
+        (body as ArrayBuffer).byteLength,
+      );
     }
   }
 
-  logDebug(
-    '🚀 Fetching with headers:',
-    Object.fromEntries(headers.entries()),
-  );
+  logDebug('🚀 Fetching with headers:', Object.fromEntries(headers.entries()));
 
   const fetchResponse = await fetch(handlingRequest.url, {
     method: handlingRequest.method,
@@ -151,13 +153,16 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
   });
 
   logDebug('📥 Response status:', fetchResponse.status);
-  logDebug('📥 Response headers:', Object.fromEntries(fetchResponse.headers.entries()));
+  logDebug(
+    '📥 Response headers:',
+    Object.fromEntries(fetchResponse.headers.entries()),
+  );
 
   // Handle redirects
   if (fetchResponse.status >= 300 && fetchResponse.status < 400) {
     const location = fetchResponse.headers.get('location');
     logDebug('🔄 Redirect detected to:', location);
-    
+
     if (location) {
       // If it's a relative path, construct the full URL
       let redirectUrl: URL;
@@ -168,22 +173,22 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
         // If it fails, treat it as a relative path
         redirectUrl = new URL(location, handlingRequest.url);
       }
-      
+
       logDebug('🔄 Full redirect URL:', redirectUrl.toString());
-      
+
       // For login redirects, we should follow them
       if (handlingRequest.nextUrl.pathname.includes('/user/login')) {
         // Follow the redirect
         const cleanHeaders = Object.fromEntries(headers.entries());
         // Remove content-type for GET request
         delete cleanHeaders['content-type'];
-        
+
         const redirectResponse = await fetch(redirectUrl.toString(), {
           method: 'GET',
           headers: cleanHeaders,
           credentials: 'include',
         });
-        
+
         return new NextResponse(redirectResponse.body, {
           status: redirectResponse.status,
           statusText: redirectResponse.statusText,
@@ -210,9 +215,7 @@ async function handleHTTPRequests(request: NextRequest): Promise<Response> {
     const isProd = process.env.NODE_ENV === 'production';
     response.headers.append(
       'Set-Cookie',
-      `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; SameSite=Lax${
-        isProd ? '; Secure' : ''
-      }`,
+      `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; SameSite=Lax`,
     );
   }
 
@@ -253,7 +256,9 @@ function handlePageRoutes(request: NextRequest): NextResponse {
  * Rewrites external API requests to actual API endpoints.
  * This function updates Next.js route to match the actual API endpoint.
  */
-function rewriteExternalRequest(request: NextRequest): NextRequest {
+function rewriteExternalRequest(
+  request: NextRequest,
+): NextRequest | NextResponse {
   function logRequest(request: NextRequest, verb: string) {
     logInfo(
       `🚦 🛜 ${verb} HTTP request: ` +
@@ -272,7 +277,15 @@ function rewriteExternalRequest(request: NextRequest): NextRequest {
     host = host.slice(0, -1);
   }
   if (!host) {
-    throw new Error('NEXT_PUBLIC_HOST environment variable is not set');
+    logInfo(
+      'Missing NEXT_PUBLIC_HOST environment variable; blocking proxied request.',
+    );
+    return NextResponse.json(
+      {
+        error: 'Server is not configured for external API proxying.',
+      },
+      { status: 500 },
+    );
   }
 
   const newPathname = request.nextUrl.pathname.replace(
