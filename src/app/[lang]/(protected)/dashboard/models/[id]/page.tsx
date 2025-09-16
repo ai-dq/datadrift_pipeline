@@ -156,7 +156,7 @@ export default function ModelVersionPage({
 
   return (
     <div>
-      <PageHeader title={model.name} showSettings={false} />
+      <PageHeader title={model.name} />
       <div className="container mx-auto px-4 py-8">
         {/* Model Versions Table */}
         <div className="mb-8">

@@ -104,7 +104,6 @@ export default function ModelTrainingPage() {
       <PageHeader
         title={t('trainingPage.title')}
         subtitle={t('trainingPage.description')}
-        showSettings={false}
       />
       <ModelTrainingPageContent />
     </Suspense>

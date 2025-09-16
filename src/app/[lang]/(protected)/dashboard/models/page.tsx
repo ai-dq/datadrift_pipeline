@@ -211,7 +211,6 @@ export default function ModelsPage() {
       <PageHeader
         title={t('models.title')}
         subtitle={t('models.description')}
-        showSettings={false}
       />
       <div className="container mx-auto px-4 py-8">
         {/* Stats */}
