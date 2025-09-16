@@ -264,11 +264,14 @@ export default function DefaultModelsPage() {
 
   useEffect(() => {
     if (!selectedType && hasDefaults) {
-      const firstType = ModelType.allCases().find(
+      const availableTypes = ModelType.allCases();
+      const firstType = availableTypes.find(
         (type) => defaultModels[type] !== undefined,
       );
-      const fallback = firstType ?? ModelType.allCases()[0];
-      void handleSelectType(fallback);
+      const fallback = firstType ?? availableTypes[0];
+      if (fallback) {
+        void handleSelectType(fallback);
+      }
     }
   }, [selectedType, hasDefaults, defaultModels, handleSelectType]);
 
