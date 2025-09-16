@@ -360,5 +360,3 @@ async function attachAuthorizationHeader(request: NextRequest): Promise<{
     headers,
   };
 }
-
-// Token refresh logic moved to shared util
