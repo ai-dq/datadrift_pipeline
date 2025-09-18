@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint';
 import { FlatCompat } from '@eslint/eslintrc';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
+import importPlugin from 'eslint-plugin-import';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +16,7 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-export default [
+const settings = [
   // 1. Global ignores
   {
     ignores: [
@@ -98,6 +99,31 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
     },
   },
-];
 
-export default eslintConfig;
+  // 8. Import ordering
+  {
+    files: ['**/*.{js,jsx,ts,tsx}'],
+    plugins: { import: importPlugin },
+    rules: {
+      'import/order': [
+        'error',
+        {
+          groups: [
+            'builtin',
+            'external',
+            'internal',
+            'parent',
+            'sibling',
+            'index',
+          ],
+          'newlines-between': 'always',
+          alphabetize: {
+            order: 'asc',
+            caseInsensitive: true,
+          },
+        },
+      ],
+    },
+  },
+];
+export default settings;
