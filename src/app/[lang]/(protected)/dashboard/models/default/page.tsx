@@ -1,16 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Activity,
-  AlertTriangle,
-  Boxes,
-  CheckCircle2,
-  CpuIcon,
-  Eye,
-  FileText,
-  TableIcon,
-} from 'lucide-react';
+import { APIError } from '@/api/types';
+import PageHeader from '@/components/models/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,15 +15,24 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import PageHeader from '@/components/models/page-header';
-import { ModelType, ModelVersion, DefaultModel } from '@/entities/ml-model';
+import { DefaultModel, ModelType, ModelVersion } from '@/entities/ml-model';
 import {
   getDefaultModels,
   getVersionsByType,
   updateDefaultModelFor,
 } from '@/lib/api/endpoints/defaults';
-import { APIError } from '@/api/types';
 import { cn } from '@/lib/utils/tailwind.util';
+import {
+  Activity,
+  AlertTriangle,
+  Boxes,
+  CheckCircle2,
+  CpuIcon,
+  Eye,
+  FileText,
+  TableIcon,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type DefaultModelMap = Partial<Record<ModelType, DefaultModel>>;
 

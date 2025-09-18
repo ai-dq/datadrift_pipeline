@@ -1,18 +1,17 @@
 'use client';
 
+import PageHeader from '@/components/models/page-header';
 import { TrainButton } from '@/components/training/TrainingButton';
 import { TrainingSelectionPanel } from '@/components/training/TrainingSelectionPanel';
 import { TrainingStatusPanel } from '@/components/training/TrainingStatusPanel';
+import { useI18n } from '@/contexts/I18nContext';
 import { ModelType } from '@/entities/ml-model';
 import { useBackgroundTraining } from '@/hooks/train/use-background-training';
 import { useTrainingSetup } from '@/hooks/train/use-training-setup';
-import { useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useI18n } from '@/contexts/I18nContext';
-import PageHeader from '@/components/models/page-header';
+import { Suspense, useEffect, useMemo } from 'react';
 
 function ModelTrainingPageContent() {
-  const { t } = useI18n();
   const searchParams = useSearchParams();
   const type = searchParams.get('type');
   const modelId = searchParams.get('modelId');

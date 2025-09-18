@@ -1,4 +1,4 @@
-import { BookOpen, BrainCircuit, Database, SquareTerminal } from 'lucide-react';
+import { BookOpen, BrainCircuit, Database } from 'lucide-react';
 
 export function getSidebarData(t: (key: string) => string) {
   return {

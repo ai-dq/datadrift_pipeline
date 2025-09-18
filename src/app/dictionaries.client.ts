@@ -1,6 +1,6 @@
-import type { SupportedLocales } from './i18n';
-import ko from './[lang]/dictionaries/ko.json';
 import en from './[lang]/dictionaries/en.json';
+import ko from './[lang]/dictionaries/ko.json';
+import type { SupportedLocales } from './i18n';
 
 export type AppDictionary = typeof en | typeof ko;
 

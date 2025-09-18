@@ -1,23 +1,22 @@
 'use client';
 
-import React from 'react';
 import {
   createExportSnapshot,
   deleteExportSnapshot,
   downloadExportSnapshot,
 } from '@/api/endpoints/projects';
 import { uploadFilesToProject, validateFiles } from '@/api/utils/file-upload';
-import type { SupportedLocales } from '@/app/i18n';
 import { getClientDictionary } from '@/app/dictionaries.client';
+import type { SupportedLocales } from '@/app/i18n';
 import { FileUploadDialog } from '@/components/file-upload/file-upload-dialog';
 import { ProjectCardCollection } from '@/components/labelstudio/project-card-collection';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/contexts/I18nContext';
 import { Project } from '@/entities/labelstudio';
 import { useProjects, useUpdateProject } from '@/hooks/network/projects';
 import { Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
-import { useI18n } from '@/contexts/I18nContext';
+import React, { useCallback, useState } from 'react';
 
 export default function LabelingPage({
   params,
