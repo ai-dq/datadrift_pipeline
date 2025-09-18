@@ -1,5 +1,6 @@
-import { refreshAccessToken as refreshTokenUtil } from '@/lib/api/utils/token.utils';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { refreshAccessToken as refreshTokenUtil } from '@/lib/api/utils/token.utils';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const logInfo = (...args: unknown[]): void => {
@@ -107,7 +108,10 @@ export async function proxyExternalRequest(
     }
   }
 
-  const contentType = fetchResponse.headers.get('content-type');
+  const responseHeaders = new Headers(fetchResponse.headers);
+  rewriteSetCookieHeaders(responseHeaders);
+
+  const contentType = responseHeaders.get('content-type');
   const ResponseType = contentType?.includes('text/event-stream')
     ? Response
     : NextResponse;
@@ -115,7 +119,7 @@ export async function proxyExternalRequest(
   const response = new ResponseType(fetchResponse.body, {
     status: fetchResponse.status,
     statusText: fetchResponse.statusText,
-    headers: fetchResponse.headers,
+    headers: responseHeaders,
   });
 
   const validAccessToken = handlingRequest.cookies.get('ls_access_token');
@@ -127,6 +131,44 @@ export async function proxyExternalRequest(
   }
 
   return response;
+}
+
+function rewriteSetCookieHeaders(headers: Headers): void {
+  const setCookieValues = getSetCookieHeaders(headers);
+  if (setCookieValues.length === 0) return;
+
+  headers.delete('set-cookie');
+  for (const value of setCookieValues) {
+    headers.append('Set-Cookie', enforceRootPath(value));
+  }
+}
+
+function getSetCookieHeaders(headers: Headers): string[] {
+  const anyHeaders = headers as unknown as {
+    getSetCookie?: () => string[];
+    raw?: () => Record<string, string[]>;
+  };
+
+  if (typeof anyHeaders.getSetCookie === 'function') {
+    return anyHeaders.getSetCookie();
+  }
+
+  const rawHeaders = anyHeaders.raw?.();
+  if (rawHeaders && Array.isArray(rawHeaders['set-cookie'])) {
+    return rawHeaders['set-cookie'];
+  }
+
+  const singleHeader = headers.get('set-cookie');
+  return singleHeader ? [singleHeader] : [];
+}
+
+function enforceRootPath(setCookieValue: string): string {
+  const pathRegex = /path=([^;]+)/i;
+  if (pathRegex.test(setCookieValue)) {
+    return setCookieValue.replace(pathRegex, 'Path=/');
+  }
+
+  return `${setCookieValue}; Path=/`;
 }
 
 function rewriteExternalRequest(

@@ -3,14 +3,16 @@ import { use } from 'react';
 export default function ProjectPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ lang: string; id: string }>;
 }) {
-  const { id } = use(params);
+  const { id, lang } = use(params);
+
+  const iframeSrc = `/${lang}/next-api/external/projects/${id}`;
 
   return (
     <div className="w-full h-screen">
       <iframe
-        src={`${process.env.NEXT_PUBLIC_LABELSTUDIO_URL}/projects/${id}`}
+        src={iframeSrc}
         className="w-full h-screen"
       />
     </div>

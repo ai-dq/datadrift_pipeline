@@ -9,6 +9,9 @@ const isDev = process.env.NODE_ENV !== 'production';
 const logInfo = (...args: any[]) => {
   if (isDev) console.info(...args);
 };
+// Locales used in route prefixes must match the app route segment: src/app/[lang]
+// Our app uses short codes ('ko', 'en'), not region codes ('ko-KR', 'en-US').
+let locales = ['ko', 'en'];
 
 let protectedRoutes = ['/dashboard', '/services'];
 
@@ -21,8 +24,6 @@ let requiredCookies = [
 
 export const config = {
   matcher: [
-    // HTTP Requests
-    '/next-api/external/:path*',
     // Page Routes - exclude static files and API routes
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
@@ -32,10 +33,14 @@ export async function middleware(request: NextRequest): Promise<Response> {
   const { pathname } = request.nextUrl;
   logInfo('Middleware called for path:', pathname);
 
-  const { locale: matchedLocale, pathname: normalizedPathname } =
-    stripLocaleFromPathname(pathname);
-  const hasLocalePrefix = Boolean(matchedLocale);
-  const isNextApiRoute = normalizedPathname.startsWith('/next-api/');
+  const normalizedPathname = stripLocaleFromPathname(pathname);
+  if (normalizedPathname.startsWith('/next-api/external')) {
+    return NextResponse.next();
+  }
+
+  const pathnameHasLocale = locales.some(
+    (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
+  );
 
   if (isNextApiRoute) {
     if (hasLocalePrefix) {
@@ -52,7 +57,7 @@ export async function middleware(request: NextRequest): Promise<Response> {
     return handlePageRoutes(request);
   }
 
-  // Web page routes - redirect to localized version (next-api/* excluded above)
+  // Web page routes - redirect to localized version
   const locale = getLocale(request);
   const url = request.nextUrl.clone();
   url.pathname = `/${locale}${pathname}`;
@@ -75,6 +80,21 @@ function getLocale(request: NextRequest): string {
   }
 
   return 'en';
+}
+
+function stripLocaleFromPathname(pathname: string): string {
+  for (const locale of locales) {
+    if (pathname === `/${locale}`) {
+      return '/';
+    }
+
+    if (pathname.startsWith(`/${locale}/`)) {
+      const rest = pathname.slice(locale.length + 1);
+      return rest ? `/${rest}` : '/';
+    }
+  }
+
+  return pathname;
 }
 
 /**
