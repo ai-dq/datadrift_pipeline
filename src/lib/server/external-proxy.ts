@@ -70,10 +70,11 @@ export async function proxyExternalRequest(
   });
 
   logDebug('📥 Response status:', fetchResponse.status);
-  logDebug(
-    '📥 Response headers:',
-    Object.fromEntries(fetchResponse.headers.entries()),
-  );
+  for (const [key, value] of fetchResponse.headers.entries()) {
+    logDebug(key, value);
+  }
+
+  const fetchResponseSetCookie = fetchResponse.headers.getSetCookie();
 
   if (fetchResponse.status >= 300 && fetchResponse.status < 400) {
     const location = fetchResponse.headers.get('location');
@@ -98,6 +99,12 @@ export async function proxyExternalRequest(
           headers: cleanHeaders,
           credentials: 'include',
         });
+
+        if (fetchResponseSetCookie) {
+          fetchResponseSetCookie.forEach((cookie) => {
+            redirectResponse.headers.append('Set-Cookie', cookie);
+          });
+        }
 
         return new NextResponse(redirectResponse.body, {
           status: redirectResponse.status,
