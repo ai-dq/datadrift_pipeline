@@ -1,15 +1,16 @@
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 import { proxyExternalRequest } from '@/lib/server/external-proxy';
 
-type RouteHandler = (request: NextRequest) => Promise<Response>;
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const handle: RouteHandler = (request) => proxyExternalRequest(request);
+async function handle(request: NextRequest) {
+  return proxyExternalRequest(request);
+}
 
 export const GET = handle;
 export const POST = handle;
 export const PUT = handle;
 export const DELETE = handle;
 export const PATCH = handle;
-export const OPTIONS = handle;
-export const HEAD = handle;

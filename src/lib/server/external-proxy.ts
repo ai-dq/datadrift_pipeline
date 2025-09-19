@@ -214,6 +214,7 @@ function rewriteExternalRequest(
   const newRequest = new NextRequest(targetUrl, request);
 
   logRequest('🚦 🛜 Rewritten HTTP request:', newRequest);
+  logInfo('Sending request to: ', newRequest.url);
 
   return newRequest;
 }

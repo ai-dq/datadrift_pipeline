@@ -1,8 +1,7 @@
 {
   "app": {
-    "name": "데이터 드리프트",
-    "title": "데이터 드리프트",
-    "description": "데이터 드리프트 시연 페이지"
+    "title": "Q-OCR Dashboard",
+    "description": "Q-OCR은 이미지를 텍스트로 변환하는 강력한 OCR 도구입니다."
   },
   "nav": {
     "data": "데이터",
@@ -27,7 +26,7 @@
     "loginDescription": "이메일과 비밀번호로 로그인하세요",
     "email": "이메일",
     "password": "비밀번호",
-    "emailPlaceholder": "diquest@example.com",
+    "emailPlaceholder": "qocr@example.com",
     "loginButton": "로그인"
   },
   "labeling": {

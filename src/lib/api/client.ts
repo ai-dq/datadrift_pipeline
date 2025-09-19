@@ -104,10 +104,13 @@ export class ApiClient {
       if (responseType === 'text') {
         return (await response.text()) as unknown as T;
       }
-      
+
       // Auto-detect based on content type if no responseType specified
       const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json') || responseType === 'json') {
+      if (
+        contentType?.includes('application/json') ||
+        responseType === 'json'
+      ) {
         return await response.json();
       }
       return (await response.text()) as unknown as T;
@@ -120,8 +123,7 @@ export class ApiClient {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       throw new ApiError(0, 'Network error or request failed', errorMessage);
-    }
-    finally {
+    } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
   }
@@ -724,7 +726,8 @@ export class ApiClient {
     if (status !== 401) return;
 
     const redirectTo = this.extractRedirectUrl(parsedContent) || '/login';
-    if (IS_DEV) console.log('[API] Authentication required, redirecting to:', redirectTo);
+    if (IS_DEV)
+      console.log('[API] Authentication required, redirecting to:', redirectTo);
     window.location.href = redirectTo;
   }
 

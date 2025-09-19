@@ -21,8 +21,5 @@ COPY --from=builder /app/next.config.ts ./next.config.ts
 
 RUN bun install --frozen-lockfile
 
-# Start the production server
-CMD ["bun", "run", "start"]
-
 # Optional healthcheck: adjust locale prefix if needed
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://localhost:3000/ko/next-api/health || exit 1

@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     'local-origin.dev',
     '*.local-origin.dev',
     '121.126.210.2',
+    '121.126.210.3',
   ],
   images: {
     remotePatterns: [
