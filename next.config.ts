@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'example.com' },
     ],
   },
+  compiler: {
+    removeConsole: {
+      exclude: ['error', 'warn', 'info', 'debug'],
+    },
+  },
 };
 
 export default nextConfig;

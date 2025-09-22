@@ -7,14 +7,11 @@ export default function ProjectPage({
 }) {
   const { id, lang } = use(params);
 
-  const iframeSrc = `/${lang}/next-api/external/projects/${id}`;
+  const iframeSrc = `${process.env.NEXT_PUBLIC_HOST}labelstudio/projects/${id}`;
 
   return (
     <div className="w-full h-screen">
-      <iframe
-        src={iframeSrc}
-        className="w-full h-screen"
-      />
+      <iframe src={iframeSrc} className="w-full h-screen" />
     </div>
   );
 }

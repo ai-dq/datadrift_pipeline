@@ -35,6 +35,7 @@ export async function middleware(request: NextRequest): Promise<Response> {
 
   const normalizedPathname = stripLocaleFromPathname(pathname);
   if (normalizedPathname.startsWith('/next-api/external')) {
+    console.debug('Skipping request to external API');
     return NextResponse.next();
   }
 

@@ -6,7 +6,7 @@ export default function LabelStudioServicePage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = use(params);
-  const iframeSrc = `/${lang}/next-api/external/projects?page=1`;
+  const iframeSrc = `/next-api/external/projects?page=1`;
 
   return (
     <div className="w-full h-screen">

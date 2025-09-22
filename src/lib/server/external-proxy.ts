@@ -4,10 +4,10 @@ import { refreshAccessToken as refreshTokenUtil } from '@/lib/api/utils/token.ut
 
 const isDev = process.env.NODE_ENV !== 'production';
 const logInfo = (...args: unknown[]): void => {
-  if (isDev) console.info(...args);
+  console.info(...args);
 };
 const logDebug = (...args: unknown[]): void => {
-  if (isDev) console.debug(...args);
+  console.debug(...args);
 };
 
 export const locales = ['ko', 'en'] as const;
@@ -56,25 +56,53 @@ export async function proxyExternalRequest(
   const { request: newRequest, headers } =
     await attachAuthorizationHeader(handlingRequest);
   handlingRequest = newRequest;
-  logDebug('2️⃣ Added Authorization header:', handlingRequest.nextUrl.pathname);
+  logDebug(
+    '2️⃣ Added Authorization header:',
+    handlingRequest.nextUrl.pathname,
+    handlingRequest.headers,
+  );
 
   const body = await readRequestBody(handlingRequest);
 
-  logDebug('🚀 Fetching with headers:', Object.fromEntries(headers.entries()));
+  for (const [key, value] of headers.entries()) {
+    logDebug(`Fetching with headers: ${key} - ${value}`);
+  }
 
-  const fetchResponse = await fetch(handlingRequest.url, {
-    method: handlingRequest.method,
-    headers,
-    body,
-    redirect: 'manual',
-  });
+  let fetchResponse: Response;
+  try {
+    fetchResponse = await fetch(handlingRequest.url, {
+      method: handlingRequest.method,
+      headers,
+      body,
+      redirect: 'manual',
+    });
+  } catch (error: any) {
+    logInfo('❌ Upstream fetch failed:', {
+      url: handlingRequest.url,
+      method: handlingRequest.method,
+      message: error?.message,
+      code: error?.code,
+      errno: error?.errno,
+      cause: String(error?.cause || ''),
+    });
+
+    return NextResponse.json(
+      {
+        error: 'Upstream connection failed',
+        detail: {
+          url: handlingRequest.url,
+          code: error?.code,
+          message: error?.message,
+        },
+      },
+      { status: 502 },
+    );
+  }
 
   logDebug('📥 Response status:', fetchResponse.status);
   for (const [key, value] of fetchResponse.headers.entries()) {
-    logDebug(key, value);
+    logDebug(`Fetch Response Headers: ${key} - ${value}`);
   }
-
-  const fetchResponseSetCookie = fetchResponse.headers.getSetCookie();
 
   if (fetchResponse.status >= 300 && fetchResponse.status < 400) {
     const location = fetchResponse.headers.get('location');
@@ -90,28 +118,8 @@ export async function proxyExternalRequest(
 
       logDebug('🔄 Full redirect URL:', redirectUrl.toString());
 
-      if (handlingRequest.nextUrl.pathname.includes('/user/login')) {
-        const cleanHeaders = Object.fromEntries(headers.entries());
-        delete cleanHeaders['content-type'];
-
-        const redirectResponse = await fetch(redirectUrl.toString(), {
-          method: 'GET',
-          headers: cleanHeaders,
-          credentials: 'include',
-        });
-
-        if (fetchResponseSetCookie) {
-          fetchResponseSetCookie.forEach((cookie) => {
-            redirectResponse.headers.append('Set-Cookie', cookie);
-          });
-        }
-
-        return new NextResponse(redirectResponse.body, {
-          status: redirectResponse.status,
-          statusText: redirectResponse.statusText,
-          headers: redirectResponse.headers,
-        });
-      }
+      // Let the browser follow redirects (especially for login) so it can store
+      // any new session cookies that arrived with the 3xx response.
     }
   }
 
@@ -292,7 +300,7 @@ async function attachAuthorizationHeader(request: NextRequest): Promise<{
   }
 
   const existingAuth = request.headers.get('Authorization');
-  if (!existingAuth && accessToken) {
+  if (!existingAuth && accessToken && !shouldSkipTokenRefresh) {
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
