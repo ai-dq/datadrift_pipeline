@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
     "start": "next start",
-    "lint": "next lint"
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -54,6 +58,7 @@
     "@typescript-eslint/parser": "^8.44.0",
     "@vercel/style-guide": "^6.0.0",
     "autoprefixer": "^10.4.21",
+    "cypress": "^15.2.0",
     "eslint": "^9.36.0",
     "eslint-config-next": "15.5.3",
     "eslint-config-prettier": "^10.1.8",
