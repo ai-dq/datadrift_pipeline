@@ -1,143 +1,128 @@
 export {}; // Ensure this file is treated as a module for type augmentation
 
-type AuthUser = {
-  id: number;
-  email: string;
-  username: string;
-  [key: string]: unknown;
-};
-
 const AUTH_WHOAMI_PATH = '/next-api/external/api/current-user/whoami';
 const DIRECT_LOGIN_PATH = '/next-api/external/user/login/';
 const CSRF_PATH = '/next-api/external/user/login';
 const TOKEN_OBTAIN_PATH = '/next-api/external/api/token/obtain/';
-const LOGOUT_PATH = '/next-api/external/logout';
 
-const DEFAULT_AUTH_USER: AuthUser = {
-  id: 1,
-  email: 'admin@example.com',
-  username: 'admin',
+const LOGIN_ALIAS_PREFIX = 'loginViaUi';
+const WHOAMI_ALLOWED_STATUSES = [200, 204, 308, 401] as const;
+const LOGIN_ALLOWED_STATUSES = [200, 204, 308] as const;
+
+const makeAlias = (suffix: string): string =>
+  `${LOGIN_ALIAS_PREFIX}__${suffix}`;
+
+type WhoAmIBody = {
+  display_name?: string;
+  username?: string;
+  email?: string;
 };
 
 declare global {
   namespace Cypress {
     interface Chainable {
-      mockAuthUser(
-        overrides?: Partial<AuthUser>,
-        alias?: string,
-      ): Chainable<null>;
-      mockAuthUnauthorized(alias?: string): Chainable<null>;
-      setAuthCookies(cookies?: Record<string, string>): Chainable<null>;
-      stubCsrfToken(token?: string, alias?: string): Chainable<null>;
-      stubDirectLogin(
-        statusCode?: number,
-        options?: {
-          alias?: string;
-          body?: unknown;
-          headers?: Record<string, string>;
-        },
-      ): Chainable<null>;
-      stubTokenObtain(
-        statusCode?: number,
-        options?: {
-          alias?: string;
-          body?: unknown;
-        },
-      ): Chainable<null>;
-      stubLogout(statusCode?: number, alias?: string): Chainable<null>;
+      loginViaUi(options?: {
+        email?: string;
+        password?: string;
+        visitPath?: string;
+        intercepts?: boolean;
+      }): Chainable<{
+        email: string;
+        userMenuLabel: string;
+      }>;
     }
   }
 }
 
 Cypress.Commands.add(
-  'mockAuthUser',
-  (overrides: Partial<AuthUser> = {}, alias = 'whoami') => {
-    cy.intercept('GET', AUTH_WHOAMI_PATH, {
-      statusCode: 200,
-      body: { ...DEFAULT_AUTH_USER, ...overrides },
-    }).as(alias);
-  },
-);
+  'loginViaUi',
+  ({
+    email = Cypress.env('authEmail'),
+    password = Cypress.env('authPassword'),
+    visitPath = '/ko/login',
+    intercepts = true,
+  }: {
+    email?: string;
+    password?: string;
+    visitPath?: string;
+    intercepts?: boolean;
+  } = {}) => {
+    if (!email || !password) {
+      throw new Error('Missing authEmail/authPassword in Cypress env.');
+    }
 
-Cypress.Commands.add('mockAuthUnauthorized', (alias = 'whoami') => {
-  cy.intercept('GET', AUTH_WHOAMI_PATH, {
-    statusCode: 401,
-    body: { detail: 'Unauthorized' },
-  }).as(alias);
-});
+    let resolvedUserLabel: string | undefined;
 
-Cypress.Commands.add(
-  'setAuthCookies',
-  (cookies: Record<string, string> = {}) => {
-    const defaults: Record<string, string> = {
-      csrftoken: 'csrfToken123',
-      sessionid: 'sessionToken123',
-    };
+    const whoamiAlias = makeAlias('whoami');
+    const csrfAlias = makeAlias('csrf');
+    const loginAlias = makeAlias('login');
+    const tokenAlias = makeAlias('token');
 
-    Object.entries({ ...defaults, ...cookies }).forEach(([name, value]) => {
-      cy.setCookie(name, value);
+    if (intercepts) {
+      cy.intercept('GET', AUTH_WHOAMI_PATH, (req) => {
+        req.on('response', (res) => {
+          const statusCode = res?.statusCode ?? 0;
+          if (!WHOAMI_ALLOWED_STATUSES.includes(statusCode as any)) {
+            return;
+          }
+
+          const body = res?.body as WhoAmIBody | undefined;
+          const label = body?.display_name || body?.username || body?.email;
+          if (label) {
+            resolvedUserLabel = label;
+          }
+        });
+      }).as(whoamiAlias);
+
+      cy.intercept('GET', CSRF_PATH).as(csrfAlias);
+      cy.intercept('POST', DIRECT_LOGIN_PATH).as(loginAlias);
+      cy.intercept('POST', TOKEN_OBTAIN_PATH).as(tokenAlias);
+    }
+
+    cy.visit(visitPath);
+
+    if (intercepts) {
+      cy.wait(`@${whoamiAlias}`, { timeout: 10000 })
+        .its('response.statusCode')
+        .should('be.oneOf', [...WHOAMI_ALLOWED_STATUSES]);
+
+      cy.wait(`@${csrfAlias}`)
+        .its('response.statusCode')
+        .should('be.oneOf', [200, 204, 308]);
+    }
+
+    cy.get('#email').type(email);
+    cy.get('#password').type(password, { log: false });
+    cy.get('button[type="submit"]').click();
+
+    if (intercepts) {
+      cy.wait(`@${loginAlias}`).then((interception) => {
+        const statusCode = interception?.response?.statusCode ?? 0;
+        expect(
+          LOGIN_ALLOWED_STATUSES,
+          'allowed login proxy status codes',
+        ).to.include(statusCode);
+      });
+
+      cy.wait(`@${tokenAlias}`).then((interception) => {
+        const statusCode = interception?.response?.statusCode ?? 0;
+        expect(
+          LOGIN_ALLOWED_STATUSES,
+          'allowed token proxy status codes',
+        ).to.include(statusCode);
+      });
+
+      cy.wait(`@${whoamiAlias}`, { timeout: 10000 }).then((interception) => {
+        const statusCode = interception?.response?.statusCode ?? 0;
+        expect(WHOAMI_ALLOWED_STATUSES, 'post-login whoami status').to.include(
+          statusCode,
+        );
+      });
+    }
+
+    return cy.wrap({
+      email,
+      userMenuLabel: resolvedUserLabel ?? email,
     });
   },
 );
-
-Cypress.Commands.add(
-  'stubCsrfToken',
-  (token = 'csrfToken123', alias = 'csrf') => {
-    cy.intercept('GET', CSRF_PATH, (req) => {
-      req.reply({
-        statusCode: 200,
-        headers: {
-          'set-cookie': `csrftoken=${token}; Path=/; HttpOnly`,
-          'content-type': 'text/html',
-        },
-        body: '<html></html>',
-      });
-    }).as(alias);
-  },
-);
-
-Cypress.Commands.add(
-  'stubDirectLogin',
-  (
-    statusCode = 200,
-    options: {
-      alias?: string;
-      body?: unknown;
-      headers?: Record<string, string>;
-    } = {},
-  ) => {
-    const {
-      alias = 'login',
-      body = {},
-      headers = {
-        'set-cookie': 'sessionid=sessionToken123; Path=/; HttpOnly',
-      },
-    } = options;
-    cy.intercept('POST', DIRECT_LOGIN_PATH, {
-      statusCode,
-      body,
-      headers,
-    }).as(alias);
-  },
-);
-
-Cypress.Commands.add(
-  'stubTokenObtain',
-  (statusCode = 200, options: { alias?: string; body?: unknown } = {}) => {
-    const {
-      alias = 'token',
-      body = { access: 'access-token', refresh: 'refresh-token' },
-    } = options;
-    cy.intercept('POST', TOKEN_OBTAIN_PATH, {
-      statusCode,
-      body,
-    }).as(alias);
-  },
-);
-
-Cypress.Commands.add('stubLogout', (statusCode = 204, alias = 'logout') => {
-  cy.intercept('POST', LOGOUT_PATH, {
-    statusCode,
-    body: {},
-  }).as(alias);
-});

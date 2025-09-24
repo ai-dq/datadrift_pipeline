@@ -15,6 +15,7 @@
 cypress/screenshots
 cypress/videos
 cypress/downloads
+cypress/cypress.env.json
 
 # next.js
 /.next/
