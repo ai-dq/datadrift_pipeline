@@ -104,6 +104,10 @@ export async function proxyExternalRequest(
     logDebug(`Fetch Response Headers: ${key} - ${value}`);
   }
 
+  const responseHeaders = new Headers(fetchResponse.headers);
+  rewriteSetCookieHeaders(responseHeaders);
+  stripHopByHopHeaders(responseHeaders);
+
   if (fetchResponse.status >= 300 && fetchResponse.status < 400) {
     const location = fetchResponse.headers.get('location');
     logDebug('🔄 Redirect detected to:', location);
@@ -155,6 +159,23 @@ function rewriteSetCookieHeaders(headers: Headers): void {
   headers.delete('set-cookie');
   for (const value of setCookieValues) {
     headers.append('Set-Cookie', enforceRootPath(value));
+  }
+}
+
+function stripHopByHopHeaders(headers: Headers): void {
+  const hopByHopHeaders = [
+    'connection',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailer',
+    'transfer-encoding',
+    'upgrade',
+  ];
+
+  for (const header of hopByHopHeaders) {
+    headers.delete(header);
   }
 }
 
