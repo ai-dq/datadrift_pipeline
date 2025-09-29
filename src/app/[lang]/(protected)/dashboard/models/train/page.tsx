@@ -43,13 +43,9 @@ function ModelTrainingPageContent() {
   ]);
 
   const trainingState = useBackgroundTraining({
-    modelId: trainingSetup.selectedModel?.id
-      ? parseInt(trainingSetup.selectedModel.id)
-      : 0,
+    modelId: parseInt(trainingSetup.selectedModel.id),
     taskIds: [1, 2, 3, 4, 5], // TODO: Use actual task IDs
-    modelVersionID: trainingSetup.selectedVersion?.id
-      ? trainingSetup.selectedVersion.id
-      : 0,
+    modelVersionID: parseInt(trainingSetup.selectedVersion.id),
     modelType: trainingSetup.selectedType,
     projectName: trainingSetup.selectedProject?.title,
     isAllSelected,
