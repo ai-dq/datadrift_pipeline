@@ -21,6 +21,7 @@ const NON_TOKEN_REFRESH_PATHS = [
   '/token/obtain',
   '/current-user/whoami',
 ] as const;
+const LOGOUT_PATH = '/logout';
 
 type LocaleStripResult = {
   locale: Locale | null;
@@ -125,6 +126,24 @@ export async function proxyExternalRequest(
       // Let the browser follow redirects (especially for login) so it can store
       // any new session cookies that arrived with the 3xx response.
     }
+
+    responseHeaders.delete('location');
+
+    const redirectResponse = new NextResponse(null, {
+      status: 204,
+      headers: responseHeaders,
+    });
+
+    const isLogout = handlingRequest.nextUrl.pathname.includes('/logout');
+    const validAccessToken = handlingRequest.cookies.get('ls_access_token');
+    if (validAccessToken && !isLogout) {
+      redirectResponse.headers.append(
+        'Set-Cookie',
+        `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; SameSite=Lax`,
+      );
+    }
+
+    return redirectResponse;
   }
 
   const responseHeaders = new Headers(fetchResponse.headers);
@@ -141,8 +160,9 @@ export async function proxyExternalRequest(
     headers: responseHeaders,
   });
 
+  const isLogout = handlingRequest.nextUrl.pathname.includes('/logout');
   const validAccessToken = handlingRequest.cookies.get('ls_access_token');
-  if (validAccessToken) {
+  if (validAccessToken && !isLogout) {
     response.headers.append(
       'Set-Cookie',
       `ls_access_token=${validAccessToken.value}; Path=/; Max-Age=${60 * 60 * 24}; HttpOnly; SameSite=Lax`,
