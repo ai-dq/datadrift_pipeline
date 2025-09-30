@@ -7,7 +7,7 @@
   "nav": {
     "data": "데이터",
     "workspaces": "워크스페이스",
-    "models": "모델",
+    "models": "모델 목록",
     "training": "학습",
     "monitoring": "모니터링",
     "defaultModels": "기본 모델 관리",
@@ -40,8 +40,8 @@
     "chooseProjectPlaceholder": "업로드할 프로젝트를 선택하세요..."
   },
   "models": {
-    "title": "모델",
-    "description": "AI 모델을 관리하고 모니터링합니다",
+    "title": "모델 목록",
+    "description": "모델들의 목록을 조회하고 관리합니다.",
     "stats": {
       "layoutDetection": {
         "title": "레이아웃 감지",
