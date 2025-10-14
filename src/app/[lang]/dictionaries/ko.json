@@ -108,7 +108,9 @@
         "epochs": "Epochs",
         "trainingTime": "Training Time",
         "precision": "Precision",
-        "recall": "Recall"
+        "recall": "Recall",
+        "map50": "mAP50",
+        "map5095": "mAP50-95"
       }
     },
     "default": {

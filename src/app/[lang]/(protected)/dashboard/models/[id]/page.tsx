@@ -9,11 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModelVersion } from '@/entities/ml-model';
 import { useModel, useModelVersions } from '@/hooks/network/models';
-import {
-  deleteModelVersion,
-  forkModelVersion,
-  selectModelVersion,
-} from '@/lib/api/endpoints';
+import { deleteModelVersion, forkModelVersion } from '@/lib/api/endpoints';
 
 import { columns } from './columns';
 import { DataTable } from './data-table';
@@ -129,22 +125,6 @@ export default function ModelVersionPage({
     }));
   }, [versions, selectedVersion]);
 
-  const handleVersionSelect = useCallback(
-    async (version: string) => {
-      if (version === selectedVersion) return;
-      try {
-        await selectModelVersion(modelId, version);
-        setSelectedVersion(version);
-        setTimeout(() => {
-          router.refresh();
-        }, 0);
-      } catch (error) {
-        console.error('Failed to select model version:', error);
-      }
-    },
-    [modelId, selectedVersion, router],
-  );
-
   const handleVersionDelete = useCallback(
     async (versionId: number) => {
       if (!window.confirm(t('models.delete.confirmMessage'))) {
@@ -187,19 +167,8 @@ export default function ModelVersionPage({
   );
 
   const memoizedColumns = useMemo(
-    () =>
-      columns(
-        selectedVersion,
-        handleVersionSelect,
-        handleVersionDelete,
-        handleVersionFork,
-      ),
-    [
-      selectedVersion,
-      handleVersionSelect,
-      handleVersionDelete,
-      handleVersionFork,
-    ],
+    () => columns(handleVersionDelete, handleVersionFork),
+    [handleVersionDelete, handleVersionFork],
   );
 
   if (modelLoading || versionsLoading) {
@@ -226,9 +195,9 @@ export default function ModelVersionPage({
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>{t('models.details.modelVersions')}</CardTitle>
+                <CardTitle>{t('modelDetail.modelVersions')}</CardTitle>
                 <p className="text-sm text-gray-500">
-                  {t('models.details.totalVersions', {
+                  {t('modelDetail.totalVersions', {
                     count: memoizedVersions.length,
                   })}
                 </p>

@@ -1,11 +1,12 @@
 {
   "app": {
+    "name": "Q-OCR",
     "title": "Q-OCR Dashboard",
     "description": "The Q-OCR Dashboard is a powerful tool for converting images to text."
   },
   "nav": {
     "data": "Data",
-    "workspaces": "workspaces",
+    "workspaces": "Workspaces",
     "models": "Models",
     "training": "Training",
     "monitoring": "Monitoring",
@@ -108,7 +109,9 @@
       "epochs": "Epochs",
       "trainingTime": "Training Time",
       "precision": "Precision",
-      "recall": "Recall"
+      "recall": "Recall",
+      "map50": "mAP50",
+      "map5095": "mAP50-95"
     }
   },
   "monitoring": {
