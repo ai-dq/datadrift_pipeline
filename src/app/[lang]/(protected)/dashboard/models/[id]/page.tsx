@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { memo, use, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, use, useCallback, useMemo, useState } from 'react';
 
 import PageHeader from '@/components/models/page-header';
 import VersionForkDialog from '@/components/models/version-fork-dialog';
@@ -104,17 +104,11 @@ export default function ModelVersionPage({
   const { data: versions, loading: versionsLoading } =
     useModelVersions(modelId);
 
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  const selectedVersion = model?.version ?? null;
   const [forkDialogOpen, setForkDialogOpen] = useState(false);
   const [selectedVersionForFork, setSelectedVersionForFork] = useState<
     number | null
   >(null);
-
-  useEffect(() => {
-    if (model?.version) {
-      setSelectedVersion(model.version);
-    }
-  }, [model?.version]);
 
   const memoizedVersions = useMemo(() => {
     if (!versions) return [];

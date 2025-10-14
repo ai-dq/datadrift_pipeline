@@ -117,29 +117,6 @@ export function useDefaultModelsPage({ t }: UseDefaultModelsOptions) {
     [t],
   );
 
-  const refreshSelectedVersion = useCallback(
-    (type: ModelType | null, versionsList: DefaultModelVersion[]) => {
-      if (!type || versionsList.length === 0) {
-        setSelectedVersionID(null);
-        return;
-      }
-
-      const defaultModel = defaultModels[type];
-      if (defaultModel) {
-        const match = versionsList.find(
-          (version) => version.version === defaultModel.version,
-        );
-        if (match) {
-          setSelectedVersionID(match.id);
-          return;
-        }
-      }
-
-      setSelectedVersionID(versionsList[0]?.id ?? null);
-    },
-    [defaultModels],
-  );
-
   const selectType = useCallback(
     async (type: ModelType) => {
       setSelectedType(type);
@@ -196,7 +173,16 @@ export function useDefaultModelsPage({ t }: UseDefaultModelsOptions) {
   }, [selectedType, selectedVersionID, versions, loadDefaultModels, t]);
 
   useEffect(() => {
-    void loadDefaultModels();
+    let cancelled = false;
+    const rafId = requestAnimationFrame(() => {
+      loadDefaultModels().then(() => {
+        if (cancelled) return;
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
   }, [loadDefaultModels]);
 
   useEffect(() => {
@@ -211,17 +197,42 @@ export function useDefaultModelsPage({ t }: UseDefaultModelsOptions) {
     const fallbackType = firstTypeWithDefault ?? availableTypes[0];
 
     if (fallbackType) {
-      void selectType(fallbackType);
+      const rafId = requestAnimationFrame(() => {
+        void selectType(fallbackType);
+      });
+      return () => cancelAnimationFrame(rafId);
     }
   }, [selectedType, hasDefaults, defaultModels, selectType]);
 
   useEffect(() => {
-    refreshSelectedVersion(selectedType, versions);
-  }, [selectedType, versions, refreshSelectedVersion]);
+    const rafId = requestAnimationFrame(() => {
+      if (!selectedType || versions.length === 0) {
+        setSelectedVersionID(null);
+        return;
+      }
+
+      const defaultModel = defaultModels[selectedType];
+      if (defaultModel) {
+        const match = versions.find(
+          (version) => version.version === defaultModel.version,
+        );
+        if (match) {
+          setSelectedVersionID(match.id);
+          return;
+        }
+      }
+
+      setSelectedVersionID(versions[0]?.id ?? null);
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [selectedType, versions, defaultModels]);
 
   useEffect(() => {
-    setUpdateStatus('idle');
-    setUpdateMessage(null);
+    const rafId = requestAnimationFrame(() => {
+      setUpdateStatus('idle');
+      setUpdateMessage(null);
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [selectedVersionID, selectedType]);
 
   const selectedTypeDefault = useMemo(() => {
