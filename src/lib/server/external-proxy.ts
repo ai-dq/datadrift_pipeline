@@ -21,7 +21,6 @@ const NON_TOKEN_REFRESH_PATHS = [
   '/token/obtain',
   '/current-user/whoami',
 ] as const;
-const LOGOUT_PATH = '/logout';
 
 type LocaleStripResult = {
   locale: Locale | null;

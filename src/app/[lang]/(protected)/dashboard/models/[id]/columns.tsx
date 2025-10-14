@@ -3,7 +3,7 @@ import { ModelVersion } from '@/entities/ml-model';
 import { cn } from '@/utils/tailwind.util';
 import { ColumnDef, Row } from '@tanstack/react-table';
 import { Check, Copy, MoreHorizontal, Trash2 } from 'lucide-react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
