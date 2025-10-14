@@ -216,7 +216,7 @@ export const columns = (
     maxSize: 80,
   },
   {
-    id: 'map50',
+    id: 'map5095',
     header: () => {
       const Map50Header = () => {
         const { t } = useI18n();
