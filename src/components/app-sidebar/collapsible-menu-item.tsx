@@ -26,7 +26,7 @@ export const CollapsibleMenuItemComponent = ({
     <SidebarMenuItem>
       <>
         <SidebarMenuButton asChild tooltip={item.title}>
-          <a href={item.uri}>
+          <a href={item.url}>
             <item.icon />
             <span>{item.title}</span>
           </a>
@@ -44,7 +44,7 @@ export const CollapsibleMenuItemComponent = ({
                 {item.children.map((child) => (
                   <SidebarMenuSubItem key={child.title}>
                     <SidebarMenuSubButton asChild>
-                      <a href={child.uri}>
+                      <a href={child.url}>
                         <span>{child.title}</span>
                       </a>
                     </SidebarMenuSubButton>
