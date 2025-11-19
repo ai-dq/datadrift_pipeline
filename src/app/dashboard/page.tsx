@@ -1,7 +1,3 @@
-export default function Dashboard() {
-  return (
-    <div>
-      <h1>Welcome to Dashboard</h1>
-    </div>
-  );
+export default function DashboardPage() {
+  return <div className="w-full h-screen">Hello World!</div>;
 }
