@@ -58,6 +58,51 @@ const getTypeBadge = (type: Model['type']) => {
   }
 };
 
+// Component to handle actions, including router usage
+const ModelActionsCell = ({ model }: { model: Model }) => {
+  const router = useRouter();
+
+  const handleDetailClick = () => {
+    router.push(`/models/${model.id}`);
+  };
+
+  const handleDeleteClick = () => {
+    // Implement actual delete logic here, possibly opening a confirmation dialog
+    console.log('Attempting to delete model:', model.id);
+    // Example: await deleteModel(model.id); router.refresh();
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="size-8 p-0">
+          <span className="sr-only">Open menu</span>
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          variant="default"
+          className="flex items-center gap-2"
+          onClick={handleDetailClick}
+        >
+          <Info className="size-4" />
+          View Details
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          className="flex items-center gap-2"
+          onClick={handleDeleteClick} // Kept console log for now
+        >
+          <Trash2 className="size-4" />
+          Delete Model
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 export const columns: ColumnDef<Model>[] = [
   {
     accessorKey: 'id',
@@ -101,41 +146,6 @@ export const columns: ColumnDef<Model>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => {
-      const model = row.original;
-      const router = useRouter();
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="size-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="default"
-              className="flex items-center gap-2"
-              onClick={() => router.push(`/models/${model.id}`)}
-            >
-              <Info className="size-4" />
-              View Details
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              className="flex items-center gap-2"
-              onClick={() =>
-                console.log('Attempting to delete model:', model.id)
-              }
-            >
-              <Trash2 className="size-4" />
-              Delete Model
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    cell: ({ row }) => <ModelActionsCell model={row.original} />,
   },
 ];

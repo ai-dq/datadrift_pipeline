@@ -1,8 +1,8 @@
-@import "tailwindcss";
-@import "tailwindcss/utilities";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tailwindcss/utilities';
+@import 'tw-animate-css';
 
-@import "./themes.css";
+@import './themes.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -250,7 +250,7 @@
     position: relative;
     @apply md:-mx-4;
 
-    &:has([data-rehype-pretty-code-title]) [data-slot="copy-button"] {
+    &:has([data-rehype-pretty-code-title]) [data-slot='copy-button'] {
       top: calc(var(--spacing) * 1.5) !important;
     }
   }
@@ -324,7 +324,7 @@
       left: 0;
       width: 2px;
       height: 100%;
-      content: "";
+      content: '';
       background-color: color-mix(
         in oklab,
         var(--muted-foreground) 50%,
