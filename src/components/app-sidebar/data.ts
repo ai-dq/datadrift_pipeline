@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react';
+import { Bot, Settings2 } from 'lucide-react';
 
 import { GradioIcon, LabelStudioIcon, SwaggerIcon } from '@/components/icons';
 import type { MenuItem, ServiceItem } from './types';
@@ -22,6 +22,18 @@ export const services: ServiceItem[] = [
 ];
 
 export const menuItems: MenuItem[] = [
+  {
+    title: 'Label Studio',
+    url: '/dashboard/projects',
+    icon: Settings2,
+    isActive: true,
+    children: [
+      {
+        title: 'Projects',
+        url: '#',
+      },
+    ],
+  },
   {
     title: 'Models',
     url: '/models',
