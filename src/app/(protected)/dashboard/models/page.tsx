@@ -11,65 +11,21 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ApiModelResponse, getModels } from '@/lib/api';
-import { formatRelativeTime } from '@/lib/utils/time';
+import { Model } from '@/entities/ml-model';
+import { useModels } from '@/hooks/network/models';
 import { ColumnFiltersState, OnChangeFn } from '@tanstack/react-table';
 import {
-  Activity,
   AlertCircle,
-  CreditCard,
+  PanelsLeftBottom,
   Search,
-  Users,
+  Signature,
+  Table2,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { columns, Model } from './columns';
+import { useRouter } from 'next/navigation';
+import { useCallback, useMemo, useState } from 'react';
+import { columns } from './columns';
 import { DataTable } from './data-table';
-
-/**
- * Transform API model to UI Model
- */
-function transformResponseToEntity(response: ApiModelResponse): Model {
-  return {
-    id: response.id.toString(),
-    name: response.name,
-    type: response.type,
-    version: response.version,
-    updatedAt: formatRelativeTime(response.updated_at),
-  };
-}
-
-/**
- * Custom hook for managing models data
- */
-function useModelsData() {
-  const [data, setData] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchModels = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getModels();
-      const modelsData = response.items.map(transformResponseToEntity);
-      setData(modelsData);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to fetch models';
-      setError(errorMessage);
-      console.error('Failed to fetch models:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
-
-  return { data, loading, error, refetch: fetchModels };
-}
 
 /**
  * Custom hook for managing column filters
@@ -187,7 +143,9 @@ function ModelsPageError({
 }
 
 export default function ModelsPage() {
-  const { data, loading, error, refetch } = useModelsData();
+  const router = useRouter();
+
+  const { data, loading, error, refetch } = useModels();
   const {
     columnFilters,
     handleColumnFiltersChange,
@@ -213,6 +171,27 @@ export default function ModelsPage() {
     [updateSearchFilter],
   );
 
+  // Handle row click
+  const handleRowClick = useCallback(
+    (rowData: Model) => {
+      const model = data.find((model) => model.id === rowData.id);
+
+      if (model) {
+        const { id, ...rest } = model;
+        const stringified = Object.entries(rest).reduce(
+          (acc, [k, v]) => {
+            acc[k] = String(v);
+            return acc;
+          },
+          {} as Record<string, string>,
+        );
+        const queryParams = new URLSearchParams(stringified);
+        router.push(`/models/${id}?${queryParams.toString()}`);
+      }
+    },
+    [data],
+  );
+
   if (loading) {
     return <ModelsPageSkeleton />;
   }
@@ -234,22 +213,22 @@ export default function ModelsPage() {
       {/* Stats */}
       <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          title="OCR"
-          description="Number of OCR models"
-          value={stats.ocr}
-          icon={Users}
-        />
-        <StatCard
           title="Layout Detection"
           description="Number of Layout Detection models"
           value={stats.layout}
-          icon={Activity}
+          icon={PanelsLeftBottom}
         />
         <StatCard
-          title="Extraction"
-          description="Number of Extraction models"
+          title="OCR"
+          description="Number of OCR models"
+          value={stats.ocr}
+          icon={Signature}
+        />
+        <StatCard
+          title="Table Recognition"
+          description="Number of Table Recognition models"
           value={stats.extraction}
-          icon={CreditCard}
+          icon={Table2}
         />
       </div>
 
@@ -262,9 +241,7 @@ export default function ModelsPage() {
                 <CardTitle className="text-xl font-semibold text-gray-900">
                   Model Overview
                 </CardTitle>
-                <CardDescription>
-                  List of all models ({data.length} total)
-                </CardDescription>
+                <CardDescription>List of all models</CardDescription>
               </div>
               <div className="flex items-center">
                 <div className="relative flex items-center">
@@ -295,6 +272,7 @@ export default function ModelsPage() {
               columns={columns}
               columnFilters={columnFilters}
               onColumnFiltersChange={handleColumnFiltersChange}
+              onRowClick={handleRowClick}
             />
           </CardContent>
         </Card>

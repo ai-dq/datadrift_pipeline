@@ -1,4 +1,4 @@
-import ModelTypeBadge from '@/components/model-type-badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Model, ModelType } from '@/entities/ml-model';
+import { Model } from '@/entities/ml-model';
 import { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowUpDown,
@@ -20,6 +20,51 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+
+const MODEL_TYPES = [
+  { value: 'layout', label: 'Layout Detection' },
+  { value: 'ocrcls', label: 'OCR Classification' },
+  { value: 'ocrrec', label: 'OCR Recognition' },
+  { value: 'ocrdet', label: 'OCR Detection' },
+  { value: 'tabrec', label: 'Table Recognition' },
+] as const;
+
+const getTypeBadge = (type: Model['type']) => {
+  switch (type) {
+    case 'layout':
+      return (
+        <Badge className="font-bold bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+          Layout Detection
+        </Badge>
+      );
+    case 'ocrcls':
+      return (
+        <Badge className="font-bold bg-lime-100 text-lime-800 hover:bg-lime-200">
+          OCR Classification
+        </Badge>
+      );
+    case 'ocrrec':
+      return (
+        <Badge className="font-bold bg-green-100 text-green-800 hover:bg-green-200">
+          OCR Recognition
+        </Badge>
+      );
+    case 'ocrdet':
+      return (
+        <Badge className="font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
+          OCR Detection
+        </Badge>
+      );
+    case 'tabrec':
+      return (
+        <Badge className="font-bold bg-indigo-100 text-indigo-800 hover:bg-indigo-200">
+          Table
+        </Badge>
+      );
+    default:
+      return <Badge variant="secondary">{type}</Badge>;
+  }
+};
 
 // Component to handle type filtering
 const TypeFilterCell = ({ column }: { column: any }) => {
@@ -73,23 +118,15 @@ const TypeFilterCell = ({ column }: { column: any }) => {
             )}
           </div>
           <div className="space-y-2">
-            {ModelType.allCases().map((type) => (
-              <div key={type} className="flex items-center space-x-2">
+            {MODEL_TYPES.map((type) => (
+              <div key={type.value} className="flex items-center space-x-2">
                 <Checkbox
-                  id={type}
-                  checked={selectedTypes.includes(type)}
-                  onCheckedChange={() => handleTypeToggle(type)}
+                  id={type.value}
+                  checked={selectedTypes.includes(type.value)}
+                  onCheckedChange={() => handleTypeToggle(type.value)}
                 />
-<<<<<<< HEAD:src/app/models/columns.tsx
-                <label
-                  htmlFor={type.value}
-                  className="text-sm font-normal cursor-pointer flex-1"
-                >
-                  {type.label}
-=======
-                <label htmlFor={type} className="cursor-pointer flex-1">
-                  <ModelTypeBadge type={type} />
->>>>>>> e742211ff (♻️ Replace model type badge to reusable component):src/app/(protected)/dashboard/models/columns.tsx
+                <label htmlFor={type.value} className="cursor-pointer flex-1">
+                  {getTypeBadge(type.value as Model['type'])}
                 </label>
               </div>
             ))}
@@ -161,58 +198,44 @@ export const columns: ColumnDef<Model>[] = [
       const id = row.getValue('id') as Model['id'];
       return <div className="ml-4">{id}</div>;
     },
-    size: 50,
+    maxSize: 50,
   },
   {
     accessorKey: 'name',
     header: 'Model Name',
-    cell: ({ row }) => {
-      const name = row.getValue('name') as Model['name'];
-      return (
-        <Button
-          variant="link"
-          className="font-medium"
-          onClick={() => {
-            // console.log('sdfkj');
-          }}
-        >
-          {name}
-        </Button>
-      );
-    },
-    size: 250,
+    cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
+    maxSize: 250,
   },
   {
     accessorKey: 'type',
     header: ({ column }) => <TypeFilterCell column={column} />,
-    cell: ({ row }) => <ModelTypeBadge type={row.original.type} />,
+    cell: ({ row }) => {
+      const type = row.getValue('type') as Model['type'];
+      return <div>{getTypeBadge(type)}</div>;
+    },
     filterFn: (row, id, value) => {
       if (!value || value.length === 0) return true;
       return value.includes(row.getValue(id));
     },
-    size: 100,
+    maxSize: 100,
   },
   {
     accessorKey: 'version',
     header: 'Version',
-    cell: ({ row }) => {
-      const version = row.getValue('version') as Model['version'];
-      return <div className="font-mono text-sm">v{version}</div>;
-    },
-    size: 100,
+    cell: ({ row }) => (
+      <div className="font-mono text-sm">v{row.getValue('version')}</div>
+    ),
+    maxSize: 100,
   },
   {
     accessorKey: 'updatedAt',
     header: 'Last Update',
-    cell: ({ row }) => {
-      const updatedAt = row.getValue('updatedAt') as Model['updatedAt'];
-      return updatedAt;
-    },
-    size: 100,
+    cell: ({ row }) => row.getValue('updatedAt'),
+    maxSize: 100,
   },
   {
     id: 'actions',
     cell: ({ row }) => <ModelActionsCell model={row.original} />,
-    size: 40,
+    maxSize: 40,
   },
 ];

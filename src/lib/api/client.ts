@@ -1,257 +1,182 @@
 import { useCallback, useState } from 'react';
-import { getCookie } from '../utils/cookie.util';
-import { GetMLModelsResponse, MLModelResponse } from './models/ml-models';
+import { getAccessTokenByRefresh } from './endpoints/jwt';
 
-const API_BASE_URL = '/api/v1';
-
-/** HTTP method types */
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-
-/** Base request configuration */
-interface BaseRequestConfig {
-  /** Query parameters to append to URL */
-  query?: Record<string, any>;
-  /** HTTP headers */
-  headers?: Record<string, string>;
-  /** AbortController signal for request cancellation */
-  signal?: AbortSignal;
-}
-
-/** Configuration for requests with body (POST, PUT, PATCH) */
-interface RequestWithBodyConfig extends BaseRequestConfig {
-  /** Request body data */
-  data?: any;
-}
-
-/** Internal request options */
 type RequestOptions = {
-  method?: HttpMethod;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Record<string, string>;
   body?: any;
   signal?: AbortSignal;
-  query?: Record<string, any>;
 };
 
-/**
- * HTTP API client with automatic query string building, CSRF protection, and error handling
- */
+// --- JWT Token Helpers ---
+function getToken(key: string): string | null {
+  return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+}
+
+function setToken(key: string, value: string) {
+  if (typeof window !== 'undefined') localStorage.setItem(key, value);
+}
+
+function removeToken(key: string) {
+  if (typeof window !== 'undefined') localStorage.removeItem(key);
+}
+
+function parseJwt(token: string): any {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  const payload = parseJwt(token);
+  if (!payload || !payload.exp) return true;
+  return Date.now() >= payload.exp * 1000;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = getToken('refresh_token');
+  if (!refresh) return null;
+  try {
+    const access = await getAccessTokenByRefresh(refresh);
+    setToken('access_token', access);
+    return access;
+  } catch {
+    removeToken('access_token');
+    removeToken('refresh_token');
+    return null;
+  }
+}
+
 export class ApiClient {
   private baseURL: string;
 
   constructor(baseURL: string) {
-    this.baseURL = baseURL.replace(/\/$/, ''); // Remove trailing slash
+    this.baseURL = baseURL;
   }
 
-  /**
-   * Builds query string from object parameters
-   * Handles arrays, null/undefined values, and proper URL encoding
-   */
-  private buildQueryString(query?: Record<string, any>): string {
-    if (!query || Object.keys(query).length === 0) return '';
-
-    const params = new URLSearchParams();
-    Object.entries(query).forEach(([key, value]) => {
-      if (value === undefined || value === null) return;
-
-      if (Array.isArray(value)) {
-        value.forEach((v) => {
-          if (v !== undefined && v !== null) {
-            params.append(key, String(v));
-          }
-        });
-      } else {
-        params.append(key, String(value));
-      }
-    });
-
-    const queryString = params.toString();
-    return queryString ? `?${queryString}` : '';
+  private async getValidAccessToken(): Promise<string | null> {
+    let access = getToken('access_token');
+    if (!access || isTokenExpired(access)) {
+      access = await refreshAccessToken();
+    }
+    return access;
   }
 
-  /**
-   * Internal request method with automatic error handling and response parsing
-   */
   private async request<T = any>(
     endpoint: string,
     options: RequestOptions = {},
   ): Promise<T> {
-    const { method = 'GET', headers = {}, body, signal, query } = options;
-
-    // Build request headers with automatic content-type detection
-    const requestHeaders: Record<string, string> = {
-      ...(body instanceof FormData
-        ? {} // let browser set Content-Type for FormData
-        : { 'Content-Type': 'application/json' }),
-      ...headers,
-    };
-
-    // Add CSRF token for state-changing requests
-    if (method !== 'GET') {
-      const csrfToken = getCookie('csrftoken');
-      if (csrfToken) {
-        requestHeaders['X-CSRFToken'] = csrfToken;
-      }
+    const { method = 'GET', headers = {}, body, signal } = options;
+    let authHeaders = { ...headers };
+    const access = await this.getValidAccessToken();
+    if (access) {
+      authHeaders['Authorization'] = `Bearer ${access}`;
     }
-
-    // Build final URL with query parameters
-    const queryString = this.buildQueryString(query);
-    const normalizedEndpoint = endpoint.startsWith('/')
-      ? endpoint
-      : `/${endpoint}`;
-    const requestUrl = `${this.baseURL}${normalizedEndpoint}${queryString}`;
-
     const config: RequestInit = {
       method,
-      headers: requestHeaders,
+      headers: {
+        ...(body instanceof FormData
+          ? {}
+          : { 'Content-Type': 'application/json' }),
+        ...authHeaders,
+      },
       signal,
-      credentials: 'include', // Include cookies for authentication
     };
 
-    // Add body for non-GET requests
     if (body && method !== 'GET') {
       config.body = body instanceof FormData ? body : JSON.stringify(body);
     }
+
+    const finalEndpoint = `${endpoint}`;
+    const requestUrl = `${this.baseURL.replace(/\/$/, '')}${finalEndpoint.startsWith('/') ? '' : '/'}${finalEndpoint}`;
 
     try {
       const response = await fetch(requestUrl, config);
 
       if (!response.ok) {
-        let errorData: any;
-        const contentType = response.headers.get('content-type');
-
+        let errorData;
         try {
-          if (contentType?.includes('application/json')) {
-            errorData = await response.json();
-          } else {
-            errorData = {
-              error: (await response.text()) || response.statusText,
-            };
-          }
+          errorData = await response.json();
         } catch {
-          errorData = {
-            error: `HTTP ${response.status}`,
-            details: response.statusText,
-          };
+          errorData = { error: 'Unknown error', details: response.statusText };
         }
-
         throw new ApiError(
           response.status,
-          errorData.error || `HTTP ${response.status}`,
-          errorData.details || errorData.message,
+          errorData.error || response.statusText,
+          errorData.details,
         );
       }
 
-      // Handle empty responses
-      if (
-        response.status === 204 ||
-        response.headers.get('content-length') === '0'
-      ) {
+      if (response.status === 204) {
         return {} as T;
       }
 
-      // Parse response based on content type
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         return await response.json();
       }
-      return response.text() as unknown as T;
+      return (await response.text()) as unknown as T;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-
-      // Handle network errors, timeouts, etc.
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      throw new ApiError(0, 'Network error or request failed', errorMessage);
+      throw new ApiError(
+        0,
+        'Network error or request failed',
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 
-  /**
-   * GET request with optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration
-   */
   async get<T = any>(
     endpoint: string,
-    config: BaseRequestConfig = {},
+    options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...config,
-      method: 'GET',
-    });
+    return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
-  /**
-   * POST request with data and optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration with data
-   */
   async post<T = any>(
     endpoint: string,
-    config: RequestWithBodyConfig = {},
+    data?: any,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
-    const { data, ...restConfig } = config;
     return this.request<T>(endpoint, {
-      ...restConfig,
+      ...options,
       method: 'POST',
       body: data,
     });
   }
 
-  /**
-   * PUT request with data and optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration with data
-   */
   async put<T = any>(
     endpoint: string,
-    config: RequestWithBodyConfig = {},
+    data?: any,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
-    const { data, ...restConfig } = config;
-    return this.request<T>(endpoint, {
-      ...restConfig,
-      method: 'PUT',
-      body: data,
-    });
+    return this.request<T>(endpoint, { ...options, method: 'PUT', body: data });
   }
 
-  /**
-   * PATCH request with data and optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration with data
-   */
   async patch<T = any>(
     endpoint: string,
-    config: RequestWithBodyConfig = {},
+    data?: any,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
-    const { data, ...restConfig } = config;
     return this.request<T>(endpoint, {
-      ...restConfig,
+      ...options,
       method: 'PATCH',
       body: data,
     });
   }
 
-  /**
-   * DELETE request with optional query parameters
-   * @param endpoint - API endpoint path
-   * @param config - Request configuration
-   */
   async delete<T = any>(
     endpoint: string,
-    config: BaseRequestConfig = {},
+    options?: Omit<RequestOptions, 'method' | 'body'>,
   ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...config,
-      method: 'DELETE',
-    });
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }
 
-/**
- * API Error class with status code and detailed error information
- */
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -262,107 +187,16 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     Object.setPrototypeOf(this, ApiError.prototype);
   }
-
-  /**
-   * Check if error is a client error (4xx)
-   */
-  get isClientError(): boolean {
-    return this.status >= 400 && this.status < 500;
-  }
-
-  /**
-   * Check if error is a server error (5xx)
-   */
-  get isServerError(): boolean {
-    return this.status >= 500;
-  }
-
-  /**
-   * Get formatted error message with status code
-   */
-  get fullMessage(): string {
-    const statusText = this.status ? ` (${this.status})` : '';
-    const details = this.details ? `: ${this.details}` : '';
-    return `${this.message}${statusText}${details}`;
-  }
 }
 
-<<<<<<< HEAD
-export const apiClientInstance = new ApiClient(API_BASE_URL);
-
-export const getModels = async (): Promise<GetMLModelsResponse> => {
-  try {
-    const response =
-      await apiClientInstance.get<GetMLModelsResponse>('/models');
-    return response;
-  } catch (error) {
-    console.error(`Failed for getModels:`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(0, 'Failed to get models', String(error));
-  }
-};
-
-export const getModelById = async (
-  modelId: number,
-): Promise<MLModelResponse> => {
-  try {
-    const response = await apiClientInstance.get<MLModelResponse>(
-      `/models/${modelId}`,
-    );
-    return response;
-  } catch (error) {
-    console.error(`Failed for getModelById (id: ${modelId}):`, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      0,
-      `Failed to get model by id: ${modelId}. Details: ${String(error)}`,
-      String(error),
-    );
-  }
-};
-=======
-/**
- * Creates API base URL based on environment and execution context
- * @param path - API path to append
- * @returns Complete base URL for API requests
- */
-const CREATE_API_BASE_URL = (path: string): string => {
-  const defaultUrl = 'http://121.126.210.2/labelstudio';
-  const envUrl = process.env.NEXT_PUBLIC_LABELSTUDIO_URL;
-
-  if (typeof window !== 'undefined') {
-    // Client-side: use proxy in development, direct URL in production
-    const isDev = process.env.NODE_ENV === 'development';
-
-    if (isDev) {
-      return `/next-api/external${path}`;
-    }
-
-    return `${envUrl || defaultUrl}${path}`;
-  }
-
-  // Server-side: always use direct URL
-  return `${envUrl || defaultUrl}${path}`;
-};
-
-/**
- * Pre-configured API client instances
- */
 export const APIClient = {
-  /** Direct API client for root endpoints */
-  direct: new ApiClient(CREATE_API_BASE_URL('/')),
-  /** Label Studio API client */
-  labelstudio: new ApiClient(CREATE_API_BASE_URL('/api')),
-} as const;
->>>>>>> c0a9a78e3 (♻️ Enhance API client with query params)
+  qocr: new ApiClient('/api/qocr'),
+  labelstudio: new ApiClient('/api/labelstudio'),
+};
 
-/**
- * Options for the useApi React hook
- */
+// React Hook for API calls with loading state
 type UseApiOptions<T> = {
-  /** Callback fired on successful API call */
   onSuccess?: (data: T) => void;
-  /** Callback fired on API error */
   onError?: (error: ApiError) => void;
 };
 
@@ -374,10 +208,9 @@ export function useApi<T = any>(
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const execute = useCallback(async (): Promise<T> => {
+  const execute = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       const result = await apiCall();
       setData(result);
@@ -387,12 +220,7 @@ export function useApi<T = any>(
       const apiError =
         err instanceof ApiError
           ? err
-          : new ApiError(
-              0,
-              'Unknown error',
-              err instanceof Error ? err.message : String(err),
-            );
-
+          : new ApiError(0, 'Unknown error during API call', String(err));
       setError(apiError);
       options.onError?.(apiError);
       throw apiError;
@@ -401,16 +229,7 @@ export function useApi<T = any>(
     }
   }, [apiCall, options]);
 
-  return {
-    /** Response data from the API call */
-    data,
-    /** Error object if the API call failed */
-    error,
-    /** Loading state indicator */
-    loading,
-    /** Function to execute the API call */
-    execute,
-  } as const;
+  return { data, error, loading, execute };
 }
 
-export default apiClientInstance;
+export default APIClient;

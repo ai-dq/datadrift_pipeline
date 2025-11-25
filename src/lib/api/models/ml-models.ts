@@ -1,6 +1,6 @@
 // Model interfaces and types for API responses
 
-import { Model, ModelType } from '@/entities/ml-model';
+import { Model } from '@/entities/ml-model';
 import { formatRelativeTime } from '@/utils/time.util';
 import { PaginatedResponse } from './pagination';
 
@@ -23,7 +23,7 @@ export namespace MLModelResponse {
     return {
       id: response.id.toString(),
       name: response.name,
-      type: ModelType.fromString(response.type),
+      type: response.type,
       version: response.version,
       updatedAt: formatRelativeTime(response.updated_at),
       description: response.description || null,
