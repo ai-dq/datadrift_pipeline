@@ -19,14 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@/entities/*": ["./src/entities/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/utils/*": ["./src/lib/utils/*"],
-      "@/api/*": ["./src/lib/api/*", "./src/lib/api"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"],
-  "extends": "@vercel/style-guide/typescript"
+  "exclude": ["node_modules"]
 }

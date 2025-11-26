@@ -1,16 +1,17 @@
 // Model Version interfaces and types for API responses
 
-import { ModelVersion, TrainingMetrics } from '@/entities/ml-model';
-import { formatRelativeTime } from '@/utils/time.util';
+import { ModelVersion } from '@/entities/ml-model';
 import { PaginatedResponse } from './pagination';
+import { formatRelativeTime } from '@/utils/time.util';
 
 export interface MLModelVersionResponse {
+  id: string;
   model_id: number;
   trained_at: string;
   weight: string;
   version: string;
   training_args?: Record<string, any>;
-  metrics?: Record<string, number>;
+  metrics?: Record<string, any>;
   notes?: string;
 }
 
@@ -19,19 +20,10 @@ export type GetMLModelVersionsResponse =
 
 export namespace MLModelVersionResponse {
   export function toEntity(response: MLModelVersionResponse): ModelVersion {
-    const metrics = response.metrics || {};
-    const trainingMetrics: TrainingMetrics = {
-      epochs: metrics.epochs || null,
-      trainingTime: metrics.trainingTime || null,
-      precision: metrics.precision || null,
-      recall: metrics.recall || null,
-      map50: metrics.map50 || null,
-      map50to95: metrics.map50_95 || null,
-    };
     return {
+      id: response.id,
       version: response.version,
       trainedAt: formatRelativeTime(response.trained_at),
-      trainingMetrics: trainingMetrics,
     };
   }
 }

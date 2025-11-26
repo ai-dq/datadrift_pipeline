@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import { cn } from '@/utils/tailwind.util';
+import { cn } from '@/lib/utils';
 
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
@@ -113,4 +113,6 @@ export {
   TableHead,
   TableHeader,
   TableRow,
+  TableCell,
+  TableCaption,
 };

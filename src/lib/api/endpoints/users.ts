@@ -1,0 +1,28 @@
+import { APIClient } from '../client';
+import { APIError } from '../types';
+
+// TODO: User 타입 정의 필요
+interface User {
+  id: number;
+  email: string;
+  username: string;
+  [key: string]: any;
+}
+
+/**
+ * 현재 로그인된 사용자 정보를 가져옵니다.
+ * 인증 쿠키가 없거나 유효하지 않으면 APIError가 발생합니다.
+ */
+export const getCurrentUser = async (): Promise<User> => {
+  try {
+    const user = await APIClient.labelstudio.get<User>('/current-user/whoami/');
+    return user;
+  } catch (error) {
+    if (error instanceof APIError) {
+      // APIClient에서 발생시킨 에러는 그대로 전달
+      throw error;
+    }
+    // 그 외 네트워크 에러 등
+    throw new APIError(0, 'Failed to fetch current user');
+  }
+};

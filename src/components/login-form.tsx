@@ -2,16 +2,11 @@ import { cn } from '@/lib/utils/tailwind.util';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCallback } from 'react';
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<'form'>) {
-  const handleLogin = useCallback(() => {
-    console.log('Login requested');
-  }, []);
-
   return (
     <form className={cn('flex flex-col gap-6', className)} {...props}>
       <div className="flex flex-col items-center gap-2 text-center">
@@ -37,7 +32,7 @@ export function LoginForm({
           </div>
           <Input id="password" type="password" required />
         </div>
-        <Button type="submit" className="w-full" onClick={handleLogin}>
+        <Button type="submit" className="w-full">
           Login
         </Button>
       </div>

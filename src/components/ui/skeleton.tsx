@@ -1,4 +1,4 @@
-import { cn } from '@/utils/tailwind.util';
+import { cn } from '@/lib/utils';
 
 function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (

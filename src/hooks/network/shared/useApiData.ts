@@ -11,13 +11,12 @@ export function useApiData<TResponse, TEntity>({
   errorMessage = 'Failed to fetch data',
   initialData,
   autoFetch = true,
+  deps = [],
 }: {
   /**
    * Function that fetches data from the API
    */
-  fetchFn: () => Promise<
-    { items: TResponse[] } | { results: TResponse[] } | TResponse[]
-  >;
+  fetchFn: () => Promise<{ items: TResponse[] } | TResponse[]>;
   /**
    * Function that transforms API response to UI entity
    */
@@ -34,6 +33,10 @@ export function useApiData<TResponse, TEntity>({
    * Whether to automatically fetch data on mount
    */
   autoFetch?: boolean;
+  /**
+   * Dependencies that should trigger a refetch
+   */
+  deps?: unknown[];
 }): {
   data: TEntity[];
   loading: boolean;
@@ -66,11 +69,7 @@ export function useApiData<TResponse, TEntity>({
       }
 
       // Handle both array responses and paginated responses with items property
-      const items = Array.isArray(response)
-        ? response
-        : 'items' in response
-          ? response.items
-          : response.results;
+      const items = Array.isArray(response) ? response : response.items;
 
       const transformedData = items.map(transformFn);
       setData(transformedData);
@@ -102,7 +101,7 @@ export function useApiData<TResponse, TEntity>({
         abortControllerRef.current.abort();
       }
     };
-  }, [autoFetch, fetchData]);
+  }, [autoFetch, fetchData, ...deps]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -126,6 +125,7 @@ export function useApiItem<TResponse, TEntity>({
   transformFn,
   errorMessage = 'Failed to fetch item',
   autoFetch = true,
+  deps = [],
 }: {
   /**
    * Function that fetches a single item from the API
@@ -143,6 +143,10 @@ export function useApiItem<TResponse, TEntity>({
    * Whether to automatically fetch data on mount
    */
   autoFetch?: boolean;
+  /**
+   * Dependencies that should trigger a refetch
+   */
+  deps?: unknown[];
 }): {
   data: TEntity | null;
   loading: boolean;
@@ -204,7 +208,7 @@ export function useApiItem<TResponse, TEntity>({
         abortControllerRef.current.abort();
       }
     };
-  }, [autoFetch, fetchData]);
+  }, [autoFetch, fetchData, ...deps]);
 
   // Cleanup on unmount
   useEffect(() => {

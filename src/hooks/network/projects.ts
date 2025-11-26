@@ -1,9 +1,8 @@
-import { ProjectResponse } from '@/api/types';
 import { Project } from '@/entities/labelstudio';
 import { getProjects } from '@/lib/api/endpoints';
 import { useCallback } from 'react';
 import { useApiData } from './shared/useApiData';
-
+import { ProjectResponse } from '@/api/types';
 /**
  * Custom hook for getting projects data
  */

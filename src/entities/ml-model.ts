@@ -1,25 +1,14 @@
-export type ModelType = 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
-
 export type Model = {
   id: string;
   name: string;
-  type: ModelType;
+  type: 'layout' | 'ocrcls' | 'ocrrec' | 'ocrdet' | 'tabrec';
   version: string;
   updatedAt: string;
-  description: string | null;
+  description?: string;
 };
 
-export interface TrainingMetrics {
-  epochs: number | null;
-  trainingTime: number | null;
-  precision: number | null;
-  recall: number | null;
-  map50: number | null;
-  map50to95: number | null;
-}
-
 export type ModelVersion = {
+  id: string;
   version: string;
   trainedAt: string;
-  trainingMetrics: TrainingMetrics;
 };
