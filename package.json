@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src next.config.ts",
-    "test:browser": "node tests/browser-smoke.cjs"
+    "test:browser": "node tests/browser-smoke.cjs",
+    "test:workflows": "node tests/workflows.cjs && node tests/reconstruction-save.cjs && PYTHONPATH=. .venv/bin/python tests/cleanup_workflows.py"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.5.0",

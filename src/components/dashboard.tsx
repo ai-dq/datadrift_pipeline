@@ -249,7 +249,11 @@ function Select({
   return (
     <label className="field">
       {label}
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
         {children}
       </select>
     </label>
@@ -329,6 +333,7 @@ export default function Dashboard({ path }: { path: string[] }) {
   const [newWorkspace, setNewWorkspace] = useState(false),
     [name, setName] = useState(""),
     [description, setDescription] = useState("");
+  const [editWorkspaceId, setEditWorkspaceId] = useState("");
   const [budget, setBudget] = useState(200),
     [method, setMethod] = useState("source_balanced"),
     [seed, setSeed] = useState(42),
@@ -767,7 +772,12 @@ export default function Dashboard({ path }: { path: string[] }) {
                       </button>
                       <button
                         className="button"
-                        onClick={() => setNewWorkspace(true)}
+                        onClick={() => {
+                          setEditWorkspaceId("");
+                          setName("");
+                          setDescription("");
+                          setNewWorkspace(true);
+                        }}
                       >
                         <Plus size={17} />
                         워크스페이스 만들기
@@ -824,6 +834,20 @@ export default function Dashboard({ path }: { path: string[] }) {
                     <ArrowLeft size={16} />
                     전체 워크스페이스
                   </Link>
+                  {workspace && (
+                    <button
+                      className="button secondary"
+                      style={{ marginLeft: 16 }}
+                      onClick={() => {
+                        setEditWorkspaceId(workspace.id);
+                        setName(workspace.name);
+                        setDescription(workspace.description);
+                        setNewWorkspace(true);
+                      }}
+                    >
+                      워크스페이스 수정
+                    </button>
+                  )}
                   {!workspace ? (
                     <Empty>워크스페이스를 찾을 수 없습니다.</Empty>
                   ) : (
@@ -1536,7 +1560,11 @@ export default function Dashboard({ path }: { path: string[] }) {
                             <summary>
                               {p.sample_id}{" "}
                               <Badge>
-                                {p.prediction ? "JSON 생성" : "파싱 실패"}
+                                {p.prediction
+                                  ? p.schema_valid
+                                    ? "형식 정상"
+                                    : "형식 오류"
+                                  : "파싱 실패"}
                               </Badge>
                             </summary>
                             <div className="prediction">
@@ -1696,7 +1724,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                           type="number"
                           min="0.001"
                           max="1"
-                          step="0.01"
+                          step="0.001"
                           value={threshold}
                           onChange={(e) => setThreshold(+e.target.value)}
                         />
@@ -1792,10 +1820,14 @@ export default function Dashboard({ path }: { path: string[] }) {
             className="modal"
             role="dialog"
             aria-modal="true"
-            aria-label="워크스페이스 만들기"
+            aria-label={
+              editWorkspaceId ? "워크스페이스 수정" : "워크스페이스 만들기"
+            }
           >
             <div className="panel-heading">
-              <h2>워크스페이스 만들기</h2>
+              <h2>
+                {editWorkspaceId ? "워크스페이스 수정" : "워크스페이스 만들기"}
+              </h2>
               <button aria-label="닫기" onClick={() => setNewWorkspace(false)}>
                 <X size={20} />
               </button>
@@ -1804,11 +1836,16 @@ export default function Dashboard({ path }: { path: string[] }) {
               onSubmit={(e) => {
                 e.preventDefault();
                 act(async () => {
-                  await api("/workspaces", {
-                    name,
-                    description,
-                    task: "attribute_extraction",
-                  });
+                  await api(
+                    "/workspaces" +
+                      (editWorkspaceId ? "/" + editWorkspaceId : ""),
+                    {
+                      name,
+                      description,
+                      task: "attribute_extraction",
+                    },
+                    editWorkspaceId ? "PATCH" : "POST",
+                  );
                   setNewWorkspace(false);
                   setName("");
                   setDescription("");
@@ -1840,7 +1877,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                 </div>
               </label>
               <button className="button" disabled={busy}>
-                만들기
+                {editWorkspaceId ? "수정 저장" : "만들기"}
               </button>
             </form>
           </section>
