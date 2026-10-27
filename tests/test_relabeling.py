@@ -109,3 +109,43 @@ def test_balanced_evaluation_is_reproducible_and_never_adds_rows():
     assert sum(r["source"] == "b" for r in chosen) == 30
     assert chosen == evaluation_rows(rows, 64, 42, "source_balanced")
     assert len(evaluation_rows(rows, 200, 42, "source_balanced")) == 100
+
+
+def test_paired_interval_matches_shared_image_differences():
+    from scripts.summarize_relabel_drift import paired_interval
+
+    before = {str(i): 0.5 for i in range(20)}
+    after = {str(i): 0.75 for i in range(20)}
+    result = paired_interval(before, after, list(before))
+    assert result == {"count": 20, "difference": 0.25, "ci95": [0.25, 0.25]}
+    result = paired_interval(before, before, list(before))
+    assert result["difference"] == 0 and result["ci95"] == [0, 0]
+
+
+def test_experiment_reports_running_evaluation_before_queued_training(client):
+    report = {
+        "status": "training_and_evaluation",
+        "jobs": {
+            "qwen35_4b_before": "eval-active",
+            "qwen35_2b_mixed_train": "train-waiting",
+        },
+        "active_job": {
+            "key": "qwen35_2b_mixed_train",
+            "status": "queued",
+            "progress": {},
+        },
+    }
+    path = s.ROOT / "relabel-drift-experiment.json"
+    path.write_text(json.dumps(report))
+    s.save(
+        "job",
+        {
+            "id": "eval-active",
+            "status": "running",
+            "progress": {"step": 17, "total": 64},
+        },
+    )
+    actual = client.get("/api/experiments/relabel-drift").json()
+    assert actual["active_job"]["key"] == "qwen35_4b_before"
+    assert actual["active_job"]["progress"]["step"] == 17
+    assert json.loads(path.read_text()) == report

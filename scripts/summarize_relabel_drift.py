@@ -3,6 +3,7 @@
 import json
 from collections import Counter
 import numpy as np
+from PIL import Image
 from backend import store as s, taxonomy as t
 from scripts.run_relabel_drift import REPORT, save
 
@@ -128,6 +129,27 @@ def main():
     report["assessment"]["within_category_candidate_names"] = [
         t.NAMES.get(k, k) for k in report["assessment"]["within_category_candidates"]
     ]
+    resolution = {}
+    for source in ["musinsa", "gsshop"]:
+        sizes = []
+        for row in rows.values():
+            if row["source"] == source:
+                with Image.open(row["image"]) as image:
+                    sizes.append(image.size)
+        edges = np.array([max(width, height) for width, height in sizes])
+        resolution[source] = {
+            "count": len(sizes),
+            "median_long_edge": float(np.median(edges)),
+            "long_edge_min": int(edges.min()),
+            "long_edge_max": int(edges.max()),
+            "long_edge_at_most_160": int(np.sum(edges <= 160)),
+            "categories": dict(
+                Counter(
+                    row["category"] for row in rows.values() if row["source"] == source
+                )
+            ),
+        }
+    report["assessment"]["image_resolution"] = resolution
     save(report)
     print(json.dumps(report["assessment"], ensure_ascii=False, indent=2))
 

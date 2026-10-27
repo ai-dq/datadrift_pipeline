@@ -26,6 +26,18 @@ type Report = {
 };
 const percent = (n: number | undefined) =>
   n == null ? "—" : (n * 100).toFixed(1) + "%";
+const jobNames: Record<string, string> = {
+  labeling: "전체 이미지 AI 재레이블링",
+  qwen35_2b_before: "기존 2B 평가",
+  qwen35_4b_before: "기존 4B 평가",
+  qwen35_2b_mixed_train: "2B 혼합 데이터 재학습",
+  qwen35_4b_mixed_train: "4B 혼합 데이터 재학습",
+  qwen35_4b_source_train: "4B 무신사 대조군 학습",
+  qwen35_2b_mixed_after: "재학습 2B 평가",
+  qwen35_4b_mixed_after: "재학습 4B 평가",
+  qwen35_4b_source_after: "4B 무신사 대조군 평가",
+  drift: "출처 간 드리프트 분석",
+};
 export function RelabelReport() {
   const [report, setReport] = useState<Report | null>(null);
   useEffect(() => {
@@ -64,7 +76,8 @@ export function RelabelReport() {
         </p>
         {report.active_job && (
           <p>
-            현재 작업: {report.active_job.key} ·{" "}
+            현재 작업:{" "}
+            {jobNames[report.active_job.key] || report.active_job.key} ·{" "}
             {report.active_job.progress.step || 0} /{" "}
             {report.active_job.progress.total || "—"}
           </p>

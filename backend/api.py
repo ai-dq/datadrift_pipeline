@@ -118,7 +118,25 @@ def health():
 @app.get("/api/experiments/relabel-drift")
 def relabel_experiment():
     path = s.ROOT / "relabel-drift-experiment.json"
-    return json.loads(path.read_text()) if path.exists() else {"status": "not_started"}
+    if not path.exists():
+        return {"status": "not_started"}
+    report = json.loads(path.read_text())
+    # The coordinator may await a queued training job while an earlier evaluation runs.
+    if report["status"] not in {"succeeded", "failed"}:
+        for key, jid in report.get("jobs", {}).items():
+            try:
+                job = s.get("job", jid)
+            except KeyError:
+                continue
+            if job["status"] == "running":
+                report["active_job"] = {
+                    "key": key,
+                    "id": jid,
+                    "status": job["status"],
+                    "progress": job["progress"],
+                }
+                break
+    return report
 
 
 @app.get("/api/workspaces")
