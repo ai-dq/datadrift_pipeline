@@ -10,6 +10,8 @@
     "format": "prettier --write src next.config.ts",
     "test:browser": "node tests/browser-smoke.cjs",
     "test:workflows": "node tests/workflows.cjs && node tests/reconstruction-save.cjs && PYTHONPATH=. .venv/bin/python tests/cleanup_workflows.py",
+    "measure:platform": "node scripts/measure-platform.cjs",
+    "test:platform-metrics": "node --test tests/platform-metrics.cjs",
     "test:loading": "node tests/loading-performance.cjs",
     "test:edges": "node tests/edge-cases.cjs",
     "test:labels": "node tests/label-editor.cjs && PYTHONPATH=. .venv/bin/python tests/cleanup_labels.py",
