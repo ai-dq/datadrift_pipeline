@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LabelEditor, type LabelSample } from "@/components/label-editor";
 
 type Dataset = {
   id: string;
@@ -107,16 +108,7 @@ type DriftField = {
   reference: Record<string, number>;
   current: Record<string, number>;
 };
-type Sample = {
-  id: string;
-  product_id: string;
-  source: string;
-  split: string;
-  target: Record<string, unknown>;
-  label_source: string;
-  human_verified: boolean;
-  unscored_fields: string[];
-};
+type Sample = LabelSample;
 const names: Record<string, string> = {
   pattern: "패턴",
   fit: "핏",
@@ -351,7 +343,6 @@ export default function Dashboard({ path }: { path: string[] }) {
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setSample(null);
         setNewWorkspace(false);
       }
     };
@@ -887,6 +878,17 @@ export default function Dashboard({ path }: { path: string[] }) {
                           ))}
                         </select>
                         <div className="actions">
+                          <button
+                            className="button"
+                            disabled={
+                              samplesLoading ||
+                              !currentDataset ||
+                              !samples.items.length
+                            }
+                            onClick={() => setSample(samples.items[0])}
+                          >
+                            레이블 검토
+                          </button>
                           <Link
                             className="button secondary"
                             href="/ko/reconstruction"
@@ -980,7 +982,9 @@ export default function Dashboard({ path }: { path: string[] }) {
                                     <Badge>
                                       {r.human_verified
                                         ? "사람 검증"
-                                        : "AI 레이블"}
+                                        : r.label_history?.length
+                                          ? "수동 수정"
+                                          : "AI 레이블"}
                                     </Badge>
                                   </div>
                                 </button>
@@ -1892,46 +1896,27 @@ export default function Dashboard({ path }: { path: string[] }) {
         </div>
       )}
       {sample && currentDataset && (
-        <div className="drawer-backdrop" onClick={() => setSample(null)}>
-          <aside
-            className="sample-drawer"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="레이블 상세"
-          >
-            <div className="panel-heading">
-              <h2>레이블 상세</h2>
-              <button aria-label="상세 닫기" onClick={() => setSample(null)}>
-                <X size={22} />
-              </button>
-            </div>
-            <img
-              src={`/api/datasets/${currentDataset.id}/images/${sample.id}`}
-              alt={sample.product_id}
-            />
-            <h3>{sample.product_id}</h3>
-            <p className="muted">
-              {sample.source} · {sample.split}
-            </p>
-            <div className="callout">
-              {sample.label_source}
-              <br />
-              사람 검증: {sample.human_verified ? "완료" : "아니요"}
-            </div>
-            <div className="details">
-              {Object.entries(sample.target).map(([k, v]) => (
-                <div className="detail-pair" key={k}>
-                  <span>{names[k] || k}</span>
-                  <strong>
-                    {Array.isArray(v) ? v.join(", ") || "없음" : String(v)}
-                    {sample.unscored_fields.includes(k) && " (평가 제외)"}
-                  </strong>
-                </div>
-              ))}
-            </div>
-          </aside>
-        </div>
+        <LabelEditor
+          key={currentDataset.id + ":" + sample.id}
+          sample={sample}
+          dataset={currentDataset}
+          position={samples.items.findIndex((row) => row.id === sample.id)}
+          total={samples.items.length}
+          onClose={() => setSample(null)}
+          onMove={(direction) => {
+            const index = samples.items.findIndex(
+              (row) => row.id === sample.id,
+            );
+            if (samples.items[index + direction])
+              setSample(samples.items[index + direction]);
+          }}
+          onSaved={(version, updated) => {
+            setDatasets((current) => [version, ...current]);
+            setDatasetId(version.id);
+            setSample(updated);
+            setNotice("레이블 수정본을 새 버전으로 저장했습니다.");
+          }}
+        />
       )}
     </div>
   );

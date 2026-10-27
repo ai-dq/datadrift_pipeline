@@ -258,3 +258,69 @@ def test_schema_failure_is_distinct_from_json_parsing():
     result = metrics([{"target": valid}, {"target": valid}], [valid, malformed])
     assert result["parse_failures"] == 0
     assert result["schema_failures"] == 1
+
+
+def test_label_edit_creates_immutable_version_and_preserves_provenance(client):
+    from backend.training import SCHEMA
+
+    original = copy.deepcopy(s.get("dataset", "d"))
+    original["rows"][0].update(label_source="AI fixture", human_verified=False)
+    s.save("dataset", original)
+    target = {
+        key: [] if key == "details" else values[0] for key, values in SCHEMA.items()
+    }
+    body = {"target": target, "unscored_fields": ["fit"], "note": "QA review"}
+    response = client.post("/api/datasets/d/samples/0/labels", json=body)
+    assert response.status_code == 201
+    version, row = response.json()["dataset"], response.json()["sample"]
+    assert version["id"] != "d" and version["parent_ids"] == ["d"]
+    assert version["kind"] == "annotation" and version["count"] == 12
+    assert version["fingerprint"] != original["fingerprint"]
+    assert row["human_verified"] is False
+    assert row["original_label_source"] == "AI fixture"
+    assert row["label_history"][0]["before"]["target"] == {"fit": "레귤러"}
+    assert "image" not in row and "rows" not in version
+    assert s.get("dataset", "d") == original
+    saved = s.get("dataset", version["id"])
+    assert saved["rows"][1:] == original["rows"][1:]
+    assert [(r["id"], r["split"], r["sha256"]) for r in saved["rows"]] == [
+        (r["id"], r["split"], r["sha256"]) for r in original["rows"]
+    ]
+    reviewed = client.post(
+        f"/api/datasets/{version['id']}/samples/0/labels",
+        json=body | {"human_verified": True},
+    ).json()
+    assert reviewed["sample"]["human_verified"] is True
+    assert reviewed["sample"]["reviewed_at"]
+    assert len(reviewed["sample"]["label_history"]) == 2
+    assert s.get("dataset", version["id"])["rows"][0]["human_verified"] is False
+    exported = client.get(f"/api/datasets/{reviewed['dataset']['id']}/export").text
+    import json
+
+    assert json.loads(exported.splitlines()[0])["target"] == target
+
+
+def test_label_validation_and_missing_sample_do_not_save(client):
+    schema = client.get("/api/label-schema").json()
+    target = {
+        key: [] if key == "details" else values[0] for key, values in schema.items()
+    }
+    count = len(s.all_of("dataset"))
+    for body in [
+        {"target": {"fit": "레귤러"}},
+        {"target": target | {"fit": "invalid"}},
+        {"target": target | {"details": "후드"}},
+        {"target": target, "unscored_fields": ["invalid"]},
+        {"target": target, "note": "x" * 1001},
+    ]:
+        assert (
+            client.post("/api/datasets/d/samples/0/labels", json=body).status_code
+            == 422
+        )
+    assert (
+        client.post(
+            "/api/datasets/d/samples/missing/labels", json={"target": target}
+        ).status_code
+        == 404
+    )
+    assert len(s.all_of("dataset")) == count

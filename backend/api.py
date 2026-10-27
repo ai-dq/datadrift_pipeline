@@ -3,6 +3,7 @@ import hashlib
 import json
 import random
 import os
+import copy
 from contextlib import asynccontextmanager
 from typing import Literal
 from pathlib import Path
@@ -11,6 +12,7 @@ from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel, Field, ConfigDict
 from . import store as s
 from .catalog import initialize, import_labeled, model_available
+from .training import SCHEMA, valid_schema
 
 
 @asynccontextmanager
@@ -73,6 +75,13 @@ class Workspace(Strict):
 class Rename(Strict):
     name: str = Field(min_length=1, max_length=100)
     status: Literal["ready", "archived"] = "ready"
+
+
+class LabelEdit(Strict):
+    target: dict[str, str | list[str]]
+    unscored_fields: list[str] = Field(default_factory=list, max_length=14)
+    human_verified: bool = False
+    note: str = Field(default="", max_length=1000)
 
 
 class Reconstruction(Strict):
@@ -192,6 +201,69 @@ def image(did: str, sid: str):
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+@app.get("/api/label-schema")
+def label_schema():
+    return SCHEMA
+
+
+@app.post("/api/datasets/{did}/samples/{sid}/labels", status_code=201)
+def edit_labels(did: str, sid: str, body: LabelEdit):
+    if not valid_schema(body.target):
+        raise ValueError("14개 속성을 모두 입력하고 허용된 값을 선택하세요.")
+    if not set(body.unscored_fields) <= set(SCHEMA):
+        raise ValueError("평가 제외 속성이 올바르지 않습니다.")
+    with s.db() as c:
+        c.execute("BEGIN IMMEDIATE")
+        original = s.get("dataset", did, c)
+        version = copy.deepcopy(original)
+        row = next((r for r in version["rows"] if r["id"] == sid), None)
+        if row is None:
+            raise HTTPException(404, "Sample not found")
+        timestamp, vid = s.now(), s.uid()
+        row.setdefault("original_label_source", row.get("label_source", "unknown"))
+        row.setdefault("label_history", []).append(
+            {
+                "at": timestamp,
+                "parent_dataset_id": did,
+                "before": {
+                    "target": copy.deepcopy(row["target"]),
+                    "unscored_fields": row.get("unscored_fields", []),
+                    "human_verified": row.get("human_verified", False),
+                    "label_source": row.get("label_source", "unknown"),
+                },
+                "note": body.note,
+                "channel": "manual_web_or_api",
+            }
+        )
+        row.update(
+            target=body.target,
+            unscored_fields=sorted(set(body.unscored_fields)),
+            human_verified=body.human_verified,
+            label_source="수동 레이블 · 사용자 검토 완료"
+            if body.human_verified
+            else "수동 레이블 · 검토 중",
+            reviewed_at=timestamp if body.human_verified else None,
+        )
+        base_name = original.get("annotation_base_name", original["name"])
+        version.update(
+            id=vid,
+            name=f"{base_name} · 레이블 수정 {vid[:6]}",
+            annotation_base_name=base_name,
+            created_at=timestamp,
+            kind="annotation",
+            parent_ids=[did],
+            provenance="수동 수정본 · 원본 레이블 및 분할 보존",
+            fingerprint=hashlib.sha256(
+                json.dumps(version["rows"], sort_keys=True, ensure_ascii=False).encode()
+            ).hexdigest(),
+        )
+        s.save("dataset", version, c)
+    return {
+        "dataset": s.public_dataset(version),
+        "sample": {k: v for k, v in row.items() if k != "image"},
+    }
 
 
 @app.get("/api/datasets/{did}/export")
