@@ -315,6 +315,19 @@ export default function Dashboard({ path }: { path: string[] }) {
   const router = useRouter();
   const section = path[0] || "workspaces";
   const detail = path[1];
+  const needsWorkspaces =
+    section === "workspaces" || section === "reconstruction";
+  const needsModels = [
+    "models",
+    "training",
+    "evaluation",
+    "monitoring",
+  ].includes(section);
+  const needsRuns =
+    section === "evaluation" ||
+    section === "monitoring" ||
+    (section === "workspaces" && !!detail);
+  const showsRun = section === "evaluation" || section === "monitoring";
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]),
     [datasets, setDatasets] = useState<Dataset[]>([]),
     [models, setModels] = useState<Model[]>([]),
@@ -352,6 +365,7 @@ export default function Dashboard({ path }: { path: string[] }) {
     [threshold, setThreshold] = useState(0.1),
     [selectedRun, setSelectedRun] = useState(""),
     [logs, setLogs] = useState("");
+  const [runDetail, setRunDetail] = useState<Run | null>(null);
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -363,33 +377,52 @@ export default function Dashboard({ path }: { path: string[] }) {
   }, []);
   const refresh = useCallback(async () => {
     const [w, d, m, j] = await Promise.all([
-      api<Workspace[]>("/workspaces"),
+      needsWorkspaces ? api<Workspace[]>("/workspaces") : Promise.resolve(null),
       api<Dataset[]>("/datasets"),
-      api<Model[]>("/models"),
-      api<Run[]>("/jobs"),
+      needsModels
+        ? api<Model[]>("/models?summary=true")
+        : Promise.resolve(null),
+      needsRuns ? api<Run[]>("/jobs?summary=true") : Promise.resolve(null),
     ]);
-    setWorkspaces(w);
+    if (w) setWorkspaces(w);
     setDatasets(d);
-    setModels(m);
-    setRuns(j);
+    if (m) setModels(m);
+    if (j) setRuns(j);
     setLoading(false);
-  }, []);
+  }, [needsWorkspaces, needsModels, needsRuns]);
   useEffect(() => {
     let alive = true;
-    const go = () =>
-      refresh().catch((e) => {
+    let timer: ReturnType<typeof setTimeout>;
+    let inFlight = false;
+    const go = async () => {
+      if (inFlight) return;
+      clearTimeout(timer);
+      inFlight = true;
+      try {
+        if (!document.hidden) await refresh();
+      } catch (e) {
         if (alive) {
-          setError(e.message);
+          setError(
+            e instanceof Error ? e.message : "목록 조회에 실패했습니다.",
+          );
           setLoading(false);
         }
-      });
+      } finally {
+        inFlight = false;
+        if (alive) timer = setTimeout(go, needsRuns ? 4000 : 30000);
+      }
+    };
+    const onVisible = () => {
+      if (!document.hidden) void go();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     go();
-    const timer = setInterval(go, 4000);
     return () => {
       alive = false;
-      clearInterval(timer);
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [refresh]);
+  }, [refresh, needsRuns]);
   useEffect(() => {
     if ((section === "training" || section === "evaluation") && detail)
       setModelId(detail);
@@ -536,20 +569,41 @@ export default function Dashboard({ path }: { path: string[] }) {
       r.request.kind === runKind ||
       (runKind === "training" && r.request.kind === "labeling"),
   );
-  const activeRun =
+  const runSummary =
     visibleRuns.find((r) => r.id === selectedRun) || visibleRuns[0];
+  const activeRun =
+    runDetail?.id === runSummary?.id && runDetail?.status === runSummary?.status
+      ? runDetail
+      : runSummary;
   useEffect(() => {
-    if (!activeRun) return;
+    if (!showsRun || !runSummary) return;
     let alive = true;
-    api<{ text: string }>(`/jobs/${activeRun.id}/logs`)
+    api<Run>(`/jobs/${runSummary.id}`)
       .then((v) => {
-        if (alive) setLogs(v.text);
+        if (alive) setRunDetail(v);
       })
-      .catch(() => {});
+      .catch((e) => {
+        if (alive) setError(e.message);
+      });
+    if (section === "monitoring" && detail === "training") {
+      setLogs("");
+      api<{ text: string }>(`/jobs/${runSummary.id}/logs`)
+        .then((v) => {
+          if (alive) setLogs(v.text);
+        })
+        .catch(() => {});
+    }
     return () => {
       alive = false;
     };
-  }, [activeRun?.id, activeRun?.progress?.step, activeRun?.status]);
+  }, [
+    showsRun,
+    section,
+    detail,
+    runSummary?.id,
+    runSummary?.progress?.step,
+    runSummary?.status,
+  ]);
   useEffect(() => {
     const originals = datasets.filter((d) => d.kind === "import");
     const relabeled = originals.map((original) =>
@@ -755,7 +809,7 @@ export default function Dashboard({ path }: { path: string[] }) {
             <button
               className="button secondary"
               aria-label="새로고침"
-              onClick={() => act(refresh, "새로고침했습니다.")}
+              onClick={() => act(async () => {}, "새로고침했습니다.")}
               disabled={busy}
             >
               <RefreshCw size={16} />

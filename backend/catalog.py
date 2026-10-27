@@ -25,6 +25,7 @@ FIELDS = [
 
 
 def initialize():
+    s.initialize_read_indexes()
     with s.db() as c:
         for family, name in [("qwen35_2b", "Qwen3.5-2B"), ("qwen35_4b", "Qwen3.5-4B")]:
             try:

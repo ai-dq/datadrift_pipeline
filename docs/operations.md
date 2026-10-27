@@ -152,3 +152,11 @@ SHA256은 `106baf22f720`로 시작하며 전체 해시는 `backend/bkave_taxonom
 ## AI 재레이블링·드리프트 실험
 
 [실행 조건·API·비교 방법](ai-relabel-drift.md)을 참고하세요. 레이블링은 학습과 같은 GPU 큐에서 순차 처리하며 원본을 보존하는 새 버전을 생성합니다.
+
+## 목록 조회 인덱스와 갱신
+
+API 초기화 시 `dataset_summaries`와 `dataset_images` 파생 테이블을 생성하고 기존 데이터를 채웁니다. 원본 `objects.body`는 유지합니다. SQLite 트리거가 데이터셋의 등록·수정·삭제와 같은 트랜잭션에서 파생 테이블을 갱신하므로, 별도 워커나 직접 SQL 쓰기도 반영되고 롤백 시 함께 복구됩니다. 최초 적용 전에는 기존 운영 절차에 따라 SQLite 온라인 백업을 보관하세요.
+
+`GET /api/jobs?summary=true`는 결과와 전체 손실 이력을 제외한 목록을, `GET /api/models?summary=true`는 모델 목록에 필요한 메타데이터를 제공합니다. 파라미터가 없는 기존 API와 `/api/jobs/{id}`, `/api/models/{id}`는 전체 응답을 유지합니다. UI는 필요한 화면에서만 해당 작업 상세·학습 로그를 추가 조회합니다.
+
+브라우저 확인은 `npm run test:loading`으로 실행하며 `TEST_BASE_URL`로 대상 주소를 지정할 수 있습니다. 초기 표시 측정값은 `.runtime/loading-after.json`에 기록됩니다. 이 검사는 기존 데이터와 완료된 평가/드리프트/학습 이력이 있는 운영 검증 환경을 대상으로 하며 작업을 새로 제출하지 않습니다.

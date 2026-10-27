@@ -141,14 +141,9 @@ def relabel_experiment():
 
 @app.get("/api/workspaces")
 def workspaces():
-    ds = s.all_of("dataset")
+    ds = s.dataset_summaries()
     return [
-        w
-        | {
-            "datasets": [
-                s.public_dataset(d) for d in ds if d["workspace_id"] == w["id"]
-            ]
-        }
+        w | {"datasets": [d for d in ds if d["workspace_id"] == w["id"]]}
         for w in s.all_of("workspace")
     ]
 
@@ -175,16 +170,15 @@ def imports():
 
 @app.get("/api/datasets")
 def datasets(workspace_id: str | None = None):
-    return [
-        s.public_dataset(d)
-        for d in s.all_of("dataset")
-        if workspace_id is None or d["workspace_id"] == workspace_id
-    ]
+    return s.dataset_summaries(workspace_id=workspace_id)
 
 
 @app.get("/api/datasets/{did}")
 def dataset(did: str):
-    return s.public_dataset(s.get("dataset", did))
+    values = s.dataset_summaries(dataset_id=did)
+    if not values:
+        raise KeyError(f"dataset not found: {did}")
+    return values[0]
 
 
 @app.get("/api/datasets/{did}/samples")
@@ -201,10 +195,13 @@ def samples(
         for r in s.get("dataset", did)["rows"]
         if (split is None or r["split"] == split)
         and (source is None or r["source"] == source)
-        and q.lower()
-        in json.dumps(
-            r["target"] | {"product_id": r["product_id"]}, ensure_ascii=False
-        ).lower()
+        and (
+            not q
+            or q.lower()
+            in json.dumps(
+                r["target"] | {"product_id": r["product_id"]}, ensure_ascii=False
+            ).lower()
+        )
     ]
     return {
         "total": len(rows),
@@ -217,10 +214,7 @@ def samples(
 
 @app.get("/api/datasets/{did}/images/{sid}")
 def image(did: str, sid: str):
-    row = next((r for r in s.get("dataset", did)["rows"] if r["id"] == sid), None)
-    if not row:
-        raise HTTPException(404, "Image not found")
-    path = Path(row["image"])
+    path = Path(s.image_path(did, sid))
     if not path.is_file():
         raise HTTPException(404, "Source image unavailable")
     return FileResponse(
@@ -391,8 +385,24 @@ def create_reconstruction(body: Reconstruction):
 
 
 @app.get("/api/models")
-def models():
-    return [m | {"available": model_available(m)} for m in s.all_of("model")]
+def models(summary: bool = False):
+    fields = {
+        "id",
+        "name",
+        "schema_id",
+        "family",
+        "kind",
+        "status",
+        "created_at",
+        "training_job_id",
+        "dataset_id",
+        "parent_id",
+    }
+    return [
+        ({k: v for k, v in m.items() if k in fields} if summary else m)
+        | {"available": model_available(m)}
+        for m in s.all_of("model")
+    ]
 
 
 @app.patch("/api/models/{mid}")
@@ -458,7 +468,12 @@ def create_job(body: Job):
 
 
 @app.get("/api/jobs")
-def jobs(kind: Literal["training", "evaluation", "drift", "labeling"] | None = None):
+def jobs(
+    kind: Literal["training", "evaluation", "drift", "labeling"] | None = None,
+    summary: bool = False,
+):
+    if summary:
+        return s.job_summaries(kind)
     return [j for j in s.all_of("job") if kind is None or j["request"]["kind"] == kind]
 
 

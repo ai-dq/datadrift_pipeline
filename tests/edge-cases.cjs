@@ -18,7 +18,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
     );
     assert(other, "Need another available model for selection checks");
     let scenario = "archived";
-    await page.route("**/api/models", (route) =>
+    await page.route(/\/api\/models(?:\?.*)?$/, (route) =>
       route.fulfill({
         json: models.map((m) =>
           scenario === "all_unavailable"
@@ -84,7 +84,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
       page.getByRole("button", { name: "평가 시작", exact: true }),
     ).toBeDisabled();
     checks.push("no available models disables submission");
-    await page.unroute("**/api/models");
+    await page.unroute(/\/api\/models(?:\?.*)?$/);
     await page.unroute("**/api/jobs");
     const datasets = await (
       await page.request.get(base + "/api/datasets")
@@ -119,7 +119,11 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
     await expect(page.locator(".alert.error")).not.toBeEmpty();
     await page
       .locator(".check-row")
-      .filter({ hasText: mus.name })
+      .filter({
+        hasText: new RegExp(
+          "^" + mus.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "학습 ",
+        ),
+      })
       .getByRole("checkbox")
       .check();
     await page.getByLabel("학습 데이터 수").fill("701");
