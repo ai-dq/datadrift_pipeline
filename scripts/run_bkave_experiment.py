@@ -92,10 +92,10 @@ def main():
                     flush=True,
                 )
                 last[family] = status
-            if train["status"] == "failed":
-                item["error"] = train["error"]
+            if train["status"] in ("failed", "cancelled"):
+                item["error"] = train.get("error") or "작업이 취소되었습니다."
                 save(report)
-                raise RuntimeError(family + ": " + train["error"])
+                raise RuntimeError(family + ": " + item["error"])
             if train["status"] != "succeeded":
                 complete = False
                 continue
@@ -125,10 +125,10 @@ def main():
                 item["evaluation_id"] = evaluation["id"]
                 save(report)
             evaluation = api("/jobs/" + item["evaluation_id"])
-            if evaluation["status"] == "failed":
-                item["error"] = evaluation["error"]
+            if evaluation["status"] in ("failed", "cancelled"):
+                item["error"] = evaluation.get("error") or "평가가 취소되었습니다."
                 save(report)
-                raise RuntimeError(family + " evaluation: " + evaluation["error"])
+                raise RuntimeError(family + " evaluation: " + item["error"])
             if evaluation["status"] != "succeeded":
                 complete = False
                 continue
