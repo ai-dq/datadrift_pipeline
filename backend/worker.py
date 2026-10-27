@@ -1,6 +1,7 @@
 """One persistent worker; durable queue, cancellation, restart recovery, serialized GPU jobs."""
 
 import fcntl
+import hashlib
 import json
 import os
 import signal
@@ -41,11 +42,13 @@ def run(j):
         else:
             s.patch("job", jid, status="succeeded", result=result, finished_at=s.now())
         return
-    model = s.get("model", req["model_id"])
+    labeling = req["kind"] == "labeling"
+    model = {} if labeling else s.get("model", req["model_id"])
     rows = [
         r
         for r in dataset["rows"]
-        if r["split"] == ("train" if req["kind"] == "training" else req["split"])
+        if labeling
+        or r["split"] == ("train" if req["kind"] == "training" else req["split"])
     ]
     folder = s.ROOT / "jobs" / jid
     folder.mkdir(parents=True, exist_ok=True)
@@ -59,10 +62,12 @@ def run(j):
         "schema_id": dataset.get("schema_id", taxonomy.LEGACY),
         "request": req,
         "model": model,
-        "base_model": str(model_path(model["family"])),
+        "base_model": None if labeling else str(model_path(model["family"])),
         "rows": rows,
         "output": str(folder),
         "dataset_fingerprint": dataset["fingerprint"],
+        "dataset_id": dataset["id"],
+        "created_at": j["created_at"],
     }
     (folder / "input.json").write_text(json.dumps(payload, ensure_ascii=False))
     python = os.environ.get("DATADRIFT_TRAIN_PYTHON", sys.executable)
@@ -75,7 +80,12 @@ def run(j):
     try:
         with (folder / "process.log").open("w") as log:
             process = subprocess.Popen(
-                [python, "-m", "backend.training", str(folder / "input.json")],
+                [
+                    python,
+                    "-m",
+                    "backend.relabeling" if labeling else "backend.training",
+                    str(folder / "input.json"),
+                ],
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 env=env,
@@ -109,6 +119,32 @@ def run(j):
             if latest["cancel_requested"]:
                 latest.update(status="cancelled", finished_at=s.now())
             else:
+                if labeling:
+                    rows = json.loads((folder / "relabeled-rows.json").read_text())
+                    if len(rows) != len(dataset["rows"]):
+                        raise ValueError("Incomplete relabeling result")
+                    did = "relabeled-" + jid
+                    labeled = {
+                        **dataset,
+                        "id": did,
+                        "name": dataset["name"] + " · AI 재레이블",
+                        "kind": "ai_relabel",
+                        "rows": rows,
+                        "created_at": s.now(),
+                        "parent_ids": [dataset["id"]],
+                        "labeling_job_id": jid,
+                        "provenance": "Gemma-4-12B 이미지 재판독 · 사람 검토 전",
+                        "fingerprint": hashlib.sha256(
+                            json.dumps(
+                                rows, sort_keys=True, ensure_ascii=False
+                            ).encode()
+                        ).hexdigest(),
+                        "label_coverage": result["label_coverage"],
+                        "teacher": result["teacher"],
+                    }
+                    labeled.pop("annotation_base_name", None)
+                    s.save("dataset", labeled, c)
+                    result["dataset_id"] = did
                 if req["kind"] == "training":
                     mid = "trained-" + jid
                     s.save(

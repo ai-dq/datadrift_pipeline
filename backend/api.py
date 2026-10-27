@@ -90,11 +90,12 @@ class Reconstruction(Strict):
     dataset_ids: list[str] = Field(min_length=1, max_length=8)
     train_budget: int = Field(ge=1, le=100000)
     seed: int = Field(default=42, ge=0, le=2147483647)
+
     method: Literal["source_balanced", "random"] = "source_balanced"
 
 
 class Job(Strict):
-    kind: Literal["training", "evaluation", "drift"]
+    kind: Literal["training", "evaluation", "drift", "labeling"]
     dataset_id: str
     model_id: str | None = None
     reference_id: str | None = None
@@ -104,6 +105,7 @@ class Job(Strict):
     split: Literal["validation", "test"] = "validation"
     threshold: float = Field(default=0.1, gt=0, le=1)
     seed: int = Field(default=42, ge=0, le=2147483647)
+    sampling: Literal["random", "source_balanced"] = "random"
 
 
 @app.get("/api/health")
@@ -111,6 +113,12 @@ def health():
     with s.db() as c:
         c.execute("SELECT 1")
     return {"status": "ok", "task": "attribute_extraction"}
+
+
+@app.get("/api/experiments/relabel-drift")
+def relabel_experiment():
+    path = s.ROOT / "relabel-drift-experiment.json"
+    return json.loads(path.read_text()) if path.exists() else {"status": "not_started"}
 
 
 @app.get("/api/workspaces")
@@ -383,7 +391,16 @@ def model(mid: str):
 @app.post("/api/jobs", status_code=201)
 def create_job(body: Job):
     d = s.get("dataset", body.dataset_id)
-    if body.kind == "drift":
+    if body.kind == "labeling":
+        from .relabeling import TEACHER
+
+        if d.get("schema_id") != taxonomy.CURRENT or not d["rows"]:
+            raise ValueError("비케이브 기준의 데이터셋을 선택하세요.")
+        if body.model_id or body.reference_id:
+            raise ValueError("재레이블링은 고정 Gemma-4-12B 교사를 사용합니다.")
+        if not (TEACHER / "config.json").is_file():
+            raise ValueError("로컬 레이블링 모델이 없습니다.")
+    elif body.kind == "drift":
         if not body.reference_id or body.reference_id == body.dataset_id:
             raise ValueError("서로 다른 비교 데이터셋을 선택하세요.")
         ref = s.get("dataset", body.reference_id)
@@ -423,7 +440,7 @@ def create_job(body: Job):
 
 
 @app.get("/api/jobs")
-def jobs(kind: Literal["training", "evaluation", "drift"] | None = None):
+def jobs(kind: Literal["training", "evaluation", "drift", "labeling"] | None = None):
     return [j for j in s.all_of("job") if kind is None or j["request"]["kind"] == kind]
 
 

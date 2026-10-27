@@ -1,0 +1,117 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+
+type Report = {
+  status: string;
+  error?: string;
+  note?: string;
+  active_job?: { key: string; progress: { step?: number; total?: number } };
+  labeling?: { count: number; parse_failures: number; schema_failures: number };
+  comparisons?: {
+    key: string;
+    name: string;
+    model_id: string;
+    count: number;
+    macro_attribute_accuracy: number;
+    schema_failures: number;
+    by_source: Record<string, { macro_attribute_accuracy: number }>;
+  }[];
+};
+const percent = (n: number | undefined) =>
+  n == null ? "—" : (n * 100).toFixed(1) + "%";
+export function RelabelReport() {
+  const [report, setReport] = useState<Report | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      fetch("/api/experiments/relabel-drift")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => {
+          if (live) setReport(r);
+        })
+        .catch(() => {});
+    load();
+    const timer = setInterval(load, 10000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, []);
+  if (!report || report.status === "not_started") return null;
+  return (
+    <Card className="panel">
+      <div className="panel-heading">
+        <h2>AI 재레이블링 · 재학습 비교</h2>
+        <span>
+          {report.status === "succeeded"
+            ? "완료"
+            : report.status === "failed"
+              ? "실패"
+              : "실행 중"}
+        </span>
+      </div>
+      <CardContent>
+        <p className="muted">
+          Gemma-4-12B로 두 출처를 같은 기준에서 판독합니다. 기존 모델과 재학습
+          모델은 동일 검증 이미지 64개(출처별 32개)로 비교합니다.
+        </p>
+        {report.active_job && (
+          <p>
+            현재 작업: {report.active_job.key} ·{" "}
+            {report.active_job.progress.step || 0} /{" "}
+            {report.active_job.progress.total || "—"}
+          </p>
+        )}
+        {report.labeling && (
+          <p>
+            이미지 {report.labeling.count.toLocaleString()}개 재판독 · JSON 오류{" "}
+            {report.labeling.parse_failures}개 · 원문 허용값 위반{" "}
+            {report.labeling.schema_failures}개. 부적합 필드는 제외하고 원문을
+            보존합니다.
+          </p>
+        )}
+        {report.error && <p className="error-text">{report.error}</p>}
+        {!!report.comparisons?.length && (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>모델 / 학습 데이터</th>
+                  <th>속성 평균 일치도</th>
+                  <th>무신사</th>
+                  <th>GS SHOP</th>
+                  <th>허용값 위반</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.comparisons.map((r) => (
+                  <tr key={r.key}>
+                    <td>
+                      <Link href={"/ko/models/" + r.model_id}>{r.name}</Link>
+                    </td>
+                    <td>{percent(r.macro_attribute_accuracy)}</td>
+                    <td>
+                      {percent(r.by_source.musinsa?.macro_attribute_accuracy)}
+                    </td>
+                    <td>
+                      {percent(r.by_source.gsshop?.macro_attribute_accuracy)}
+                    </td>
+                    <td>
+                      {r.schema_failures} / {r.count}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="muted">
+          {report.note ||
+            "AI 교사와의 일치도입니다. 출처 차이와 레이블 수정 효과를 살피는 실험이며, 실제 시간 경과에 따른 성능 저하를 확정하지 않습니다."}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

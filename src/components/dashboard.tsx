@@ -22,6 +22,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LabelEditor, type LabelSample } from "@/components/label-editor";
+import { RelabelReport } from "@/components/relabel-report";
 
 type Dataset = {
   schema_id?: string;
@@ -77,6 +78,7 @@ type Run = {
   };
   error?: string;
   result?: {
+    dataset_id?: string;
     model_id?: string;
     count?: number;
     macro_attribute_accuracy?: number;
@@ -104,6 +106,11 @@ type Run = {
   };
 };
 type DriftField = {
+  reference_scored?: number;
+  current_scored?: number;
+  q_value?: number;
+  category_adjusted_js?: number;
+  category_adjusted_q?: number;
   field: string;
   js_divergence: number;
   detected: boolean;
@@ -524,7 +531,11 @@ export default function Dashboard({ path }: { path: string[] }) {
       : section === "monitoring" && detail === "drift"
         ? "drift"
         : "training";
-  const visibleRuns = runs.filter((r) => r.request.kind === runKind);
+  const visibleRuns = runs.filter(
+    (r) =>
+      r.request.kind === runKind ||
+      (runKind === "training" && r.request.kind === "labeling"),
+  );
   const activeRun =
     visibleRuns.find((r) => r.id === selectedRun) || visibleRuns[0];
   useEffect(() => {
@@ -627,6 +638,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                         className="text-button"
                         onClick={() => setSelectedRun(j.id)}
                       >
+                        {j.request.kind === "labeling" ? "AI 레이블 · " : ""}
                         {j.id.slice(0, 8)}
                       </button>
                     </td>
@@ -655,8 +667,11 @@ export default function Dashboard({ path }: { path: string[] }) {
             <strong>실행 {activeRun.id.slice(0, 8)}</strong>{" "}
             <Badge status={activeRun.status} />
             <p className="muted">
-              {models.find((m) => m.id === activeRun.request.model_id)?.name} ·{" "}
-              {date(activeRun.created_at)}
+              {activeRun.request.kind === "labeling"
+                ? "Gemma-4-12B · AI 재레이블링"
+                : models.find((m) => m.id === activeRun.request.model_id)
+                    ?.name}{" "}
+              · {date(activeRun.created_at)}
             </p>
           </div>
           {["queued", "running"].includes(activeRun.status) && (
@@ -914,6 +929,33 @@ export default function Dashboard({ path }: { path: string[] }) {
                           ))}
                         </select>
                         <div className="actions">
+                          <button
+                            className="button secondary"
+                            disabled={
+                              busy ||
+                              !currentDataset?.schema_id?.startsWith(
+                                "bkave-",
+                              ) ||
+                              runs.some(
+                                (r) =>
+                                  r.request.kind === "labeling" &&
+                                  r.request.dataset_id === currentDataset?.id &&
+                                  ["queued", "running"].includes(r.status),
+                              )
+                            }
+                            onClick={() =>
+                              act(async () => {
+                                const job = await api<Run>("/jobs", {
+                                  kind: "labeling",
+                                  dataset_id: currentDataset!.id,
+                                });
+                                setSelectedRun(job.id);
+                                router.push("/ko/monitoring/training");
+                              }, "AI 재레이블링을 접수했습니다. 원본은 유지됩니다.")
+                            }
+                          >
+                            AI 재레이블링
+                          </button>
                           <button
                             className="button"
                             disabled={
@@ -1686,7 +1728,13 @@ export default function Dashboard({ path }: { path: string[] }) {
                   {activeRun && (
                     <>
                       <div className="two-col">
-                        <Panel title="학습 진행">
+                        <Panel
+                          title={
+                            activeRun.request.kind === "labeling"
+                              ? "AI 레이블링 진행"
+                              : "학습 진행"
+                          }
+                        >
                           <progress
                             value={activeRun.progress.step || 0}
                             max={
@@ -1698,7 +1746,9 @@ export default function Dashboard({ path }: { path: string[] }) {
                             {activeRun.progress.step || 0} /{" "}
                             {activeRun.progress.total ||
                               activeRun.request.max_steps}{" "}
-                            스텝
+                            {activeRun.request.kind === "labeling"
+                              ? "이미지"
+                              : "스텝"}
                           </p>
                           <div className="details">
                             <span>현재 손실</span>
@@ -1726,6 +1776,19 @@ export default function Dashboard({ path }: { path: string[] }) {
                               <ArrowUpRight size={16} />
                             </Link>
                           )}
+                          {activeRun.result?.dataset_id && (
+                            <Link
+                              className="button"
+                              href={
+                                "/ko/workspaces/" +
+                                datasets.find(
+                                  (d) => d.id === activeRun.result?.dataset_id,
+                                )?.workspace_id
+                              }
+                            >
+                              재레이블링 결과 보기
+                            </Link>
+                          )}
                         </Panel>
                         <Panel title="학습 손실">
                           <Chart points={activeRun.progress.history || []} />
@@ -1743,6 +1806,7 @@ export default function Dashboard({ path }: { path: string[] }) {
               )}
               {section === "monitoring" && detail === "drift" && (
                 <>
+                  <RelabelReport />
                   <Panel title="분포 비교 실행">
                     <form
                       className="horizontal-form"
@@ -1834,6 +1898,18 @@ export default function Dashboard({ path }: { path: string[] }) {
                                   {f.detected ? "감지" : "정상"}
                                 </Badge>
                               </summary>
+                              {f.q_value !== undefined && (
+                                <p className="muted">
+                                  유효 레이블 {f.reference_scored} /{" "}
+                                  {f.current_scored} · 보정 q=
+                                  {f.q_value.toFixed(3)}
+                                  {f.category_adjusted_js !== undefined &&
+                                    ` · 카테고리 내 JS ${f.category_adjusted_js.toFixed(4)} / q=${f.category_adjusted_q?.toFixed(3)}`}
+                                  {
+                                    " · 999회 순열 검정, 다중비교 보정. 시계열 성능 저하 판정은 아닙니다."
+                                  }
+                                </p>
+                              )}
                               <div className="prediction">
                                 <pre>
                                   기준{JSON.stringify(f.reference, null, 2)}

@@ -4,6 +4,7 @@ from collections import Counter
 import numpy as np
 from PIL import Image, ImageOps
 from . import taxonomy
+from .drift_statistics import analyze
 
 
 def js(a, b):
@@ -46,7 +47,7 @@ def detect(reference, current, threshold):
                 if field in r.get("unscored_fields", []):
                     continue
                 value = r["target"].get(field)
-                if value in (None, "unknown"):
+                if value in (None, "unknown", "not_applicable"):
                     continue
                 result[str(sorted(value) if isinstance(value, list) else value)] += 1
             return result
@@ -65,12 +66,19 @@ def detect(reference, current, threshold):
             }
         )
     image_score = js(histogram(reference), histogram(current))
+    statistics = analyze(reference, current)
+    by_field = {v["field"]: v for v in statistics["fields"]}
     return {
         "comparison": "source/domain",
         "reference_count": len(reference),
         "current_count": len(current),
         "threshold": threshold,
-        "fields": sorted(fields, key=lambda f: f["js_divergence"], reverse=True),
+        "fields": sorted(
+            [f | by_field.get(f["field"], {}) for f in fields],
+            key=lambda f: f["js_divergence"],
+            reverse=True,
+        ),
+        "statistics": statistics,
         "image_histogram_js": image_score,
         "detected": image_score >= threshold or any(f["detected"] for f in fields),
         "note": "출처 간 분포 차이입니다. 시간 경과에 따른 성능 저하나 통계적 유의성을 의미하지 않습니다. AI 레이블 생성 방식 차이도 포함될 수 있습니다.",

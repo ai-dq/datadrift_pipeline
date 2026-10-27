@@ -27,6 +27,11 @@ export type LabelSample = {
   human_verified: boolean;
   unscored_fields: string[];
   label_history?: { at: string; note: string; channel?: string }[];
+  ai_label?: {
+    raw: string;
+    schema_valid: boolean;
+    rejected_fields: Record<string, unknown>;
+  };
 };
 type Version = {
   schema_id?: string;
@@ -380,9 +385,13 @@ export function LabelEditor({
                     (h) => h.channel === "manual_web_or_api",
                   )
                     ? "수동 수정본"
-                    : isBkave
-                      ? "기준 변환본"
-                      : "AI 레이블"}
+                    : sample.label_history?.some(
+                          (h) => h.channel === "ai_relabel",
+                        )
+                      ? "AI 재레이블"
+                      : isBkave
+                        ? "기준 변환본"
+                        : "AI 레이블"}
                 </span>
               </div>
               <p>
@@ -391,7 +400,10 @@ export function LabelEditor({
               </p>
               <details>
                 <summary>레이블 출처와 수정 이력</summary>
-                <p>{sample.original_label_source || sample.label_source}</p>
+                <p>현재: {sample.label_source}</p>
+                {sample.original_label_source && (
+                  <p>원본: {sample.original_label_source}</p>
+                )}
                 <p className="label-version">{dataset.name}</p>
                 {sample.label_history?.map((h, i) => (
                   <p key={i}>
@@ -402,6 +414,30 @@ export function LabelEditor({
                   </p>
                 ))}
               </details>
+              {sample.ai_label && (
+                <details>
+                  <summary>
+                    AI 판독 원문 ·{" "}
+                    {sample.ai_label.schema_valid
+                      ? "허용값 검사 통과"
+                      : "부적합 필드 제외"}
+                  </summary>
+                  <pre className="logs">{sample.ai_label.raw}</pre>
+                  {!!Object.keys(sample.ai_label.rejected_fields).length && (
+                    <p>
+                      제외된 필드:{" "}
+                      {Object.keys(sample.ai_label.rejected_fields)
+                        .map(
+                          (k) =>
+                            Object.fromEntries(groups.flatMap((g) => g.fields))[
+                              k
+                            ] || k,
+                        )
+                        .join(", ")}
+                    </p>
+                  )}
+                </details>
+              )}
             </div>
           </div>
           <div className="label-fields">

@@ -116,6 +116,23 @@ def metrics(rows, predictions, schema_id=taxonomy.LEGACY):
     }
 
 
+def evaluation_rows(rows, limit, seed, sampling="random"):
+    shuffled = rows.copy()
+    random.Random(seed).shuffle(shuffled)
+    if sampling == "random":
+        return shuffled[:limit]
+    groups = {
+        source: [r for r in shuffled if r["source"] == source]
+        for source in sorted({r["source"] for r in shuffled})
+    }
+    selected = []
+    while len(selected) < min(limit, len(shuffled)):
+        for group in groups.values():
+            if group and len(selected) < limit:
+                selected.append(group.pop(0))
+    return selected
+
+
 def main(path):
     import torch
     import torch.nn.functional as F
@@ -347,7 +364,12 @@ def main(path):
             },
         )
     else:
-        rows = rows[: req["sample_limit"]]
+        rows = evaluation_rows(
+            payload["rows"],
+            req["sample_limit"],
+            req["seed"],
+            req.get("sampling", "random"),
+        )
         if any(r["split"] not in ("validation", "test") for r in rows):
             raise ValueError("Training sample in evaluation input")
         model.eval()
