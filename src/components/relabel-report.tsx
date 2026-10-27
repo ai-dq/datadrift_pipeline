@@ -9,6 +9,11 @@ type Report = {
   note?: string;
   active_job?: { key: string; progress: { step?: number; total?: number } };
   labeling?: { count: number; parse_failures: number; schema_failures: number };
+  assessment?: {
+    raw_candidate_names: string[];
+    within_category_candidate_names: string[];
+    same_source_control_candidates: Record<string, string[]>;
+  };
   comparisons?: {
     key: string;
     name: string;
@@ -73,6 +78,30 @@ export function RelabelReport() {
           </p>
         )}
         {report.error && <p className="error-text">{report.error}</p>}
+        {report.assessment && (
+          <div className="callout">
+            <p>
+              출처 간 분포 차이 후보:{" "}
+              {report.assessment.raw_candidate_names.join(", ") ||
+                "기준 초과 없음"}
+            </p>
+            <p>
+              카테고리 구성을 보정한 뒤에도 남은 후보:{" "}
+              {report.assessment.within_category_candidate_names.join(", ") ||
+                "기준 초과 없음"}
+            </p>
+            <p>
+              기준: JS ≥ 0.1 및 보정 q &lt; 0.05. 같은 출처를 나눈 대조군의 후보
+              수: 무신사{" "}
+              {report.assessment.same_source_control_candidates.musinsa
+                ?.length || 0}
+              개, GS SHOP{" "}
+              {report.assessment.same_source_control_candidates.gsshop
+                ?.length || 0}
+              개.
+            </p>
+          </div>
+        )}
         {!!report.comparisons?.length && (
           <div className="table-wrap">
             <table>

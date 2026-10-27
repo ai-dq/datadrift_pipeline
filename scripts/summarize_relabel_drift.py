@@ -122,6 +122,12 @@ def main():
             "all_models_100_steps": True,
         },
     }
+    report["assessment"]["raw_candidate_names"] = [
+        t.NAMES.get(k, k) for k in report["assessment"]["raw_candidates"]
+    ]
+    report["assessment"]["within_category_candidate_names"] = [
+        t.NAMES.get(k, k) for k in report["assessment"]["within_category_candidates"]
+    ]
     save(report)
     print(json.dumps(report["assessment"], ensure_ascii=False, indent=2))
 

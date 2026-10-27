@@ -1,4 +1,4 @@
-const { chromium } = require("@playwright/test");
+const { chromium, expect } = require("@playwright/test");
 const fs = require("node:fs");
 const path = require("node:path");
 const output = path.resolve(".runtime/ui-verification");
@@ -60,8 +60,18 @@ fs.mkdirSync(output, { recursive: true });
     modelSelection: await page.getByLabel("시작 모델").inputValue(),
   });
   await page.getByLabel("학습 스텝").fill("1");
+  const createdResponse = page.waitForResponse(
+    (r) => r.url().endsWith("/api/jobs") && r.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "학습 시작", exact: true }).click();
+  const createdJob = await (await createdResponse).json();
   await page.waitForURL("**/ko/monitoring/training");
+  await page
+    .getByRole("button", { name: createdJob.id.slice(0, 8), exact: true })
+    .click();
+  await expect(page.locator(".run-head")).toContainText(
+    createdJob.id.slice(0, 8),
+  );
   await page.getByRole("button", { name: "실행 취소", exact: true }).click();
   await page.locator(".run-head .badge").filter({ hasText: "취소" }).waitFor();
   results.push({ trainingFormAndCancellation: "cancelled" });

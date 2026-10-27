@@ -4,7 +4,7 @@
 
 - UI: Next.js, `http://121.126.210.3:18091/ko/workspaces`
 - API: FastAPI, loopback `127.0.0.1:18092` (UI의 `/api/*`로 프록시)
-- API 문서: 서버에서 `http://127.0.0.1:18092/docs`
+- API 문서: 서버에서 `http://127.0.0.1:18092/api/docs`
 - 저장소: `.runtime/catalog.sqlite`, SQLite WAL; 단일 호스트/단일 워커 구성
 - GPU: 기존 전용 Python 환경 `/data/hslim/venvs/gemma4-12b-transformers-dev/bin/python`
 - 기본 모델: `/data/hslim/models/Qwen3.5-2B`, `/data/hslim/models/Qwen3.5-4B`
@@ -72,7 +72,7 @@ unknown과 평가 제외 속성 값은 손실에서 마스킹합니다. 학습 �
 평가는 검증/테스트 분할에서 생성한 JSON과 AI 레이블의 일치도를 측정하며 파싱 실패도 오답으로 계산합니다.
 2스텝/소수 샘플 검증은 작동 확인이며 모델 품질 검증이나 전체 학습을 의미하지 않습니다.
 
-드리프트는 14개 레이블 속성의 Jensen–Shannon divergence (base 2, 0~1)와
+드리프트는 선택한 레이블 기준의 속성별 Jensen–Shannon divergence (base 2, 0~1)와
 이미지 RGB 히스토그램 JS를 계산합니다. 소스/도메인 차이이며 시간 순서 드리프트,
 성능 저하, 통계적 유의성, 임베딩 기반 검출을 주장하지 않습니다.
 GS SHOP과 무신사의 레이블 생성 방식 차이도 분포 결과에 영향을 줍니다.

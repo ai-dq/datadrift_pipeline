@@ -551,30 +551,41 @@ export default function Dashboard({ path }: { path: string[] }) {
     };
   }, [activeRun?.id, activeRun?.progress?.step, activeRun?.status]);
   useEffect(() => {
+    const originals = datasets.filter((d) => d.kind === "import");
+    const relabeled = originals.map((original) =>
+      datasets.find(
+        (d) =>
+          d.kind === "ai_relabel" &&
+          d.workspace_id === original.workspace_id &&
+          d.count === original.count,
+      ),
+    );
     if (datasets.length)
       setParentIds((ids) =>
         ids.length
           ? ids
-          : datasets
-              .filter(
-                (d) =>
-                  d.schema_id &&
-                  d.kind === "taxonomy_migration" &&
-                  d.parent_ids.some(
-                    (id) =>
-                      datasets.find((p) => p.id === id)?.kind === "import",
-                  ),
-              )
-              .map((d) => d.id)
-              .concat(
-                datasets.some(
-                  (d) => !!d.schema_id && d.schema_id !== "visual-v1",
+          : originals.length > 0 && relabeled.every(Boolean)
+            ? relabeled.map((d) => d!.id)
+            : datasets
+                .filter(
+                  (d) =>
+                    d.schema_id &&
+                    d.kind === "taxonomy_migration" &&
+                    d.parent_ids.some(
+                      (id) =>
+                        datasets.find((p) => p.id === id)?.kind === "import",
+                    ),
                 )
-                  ? []
-                  : datasets
-                      .filter((d) => d.kind === "import")
-                      .map((d) => d.id),
-              ),
+                .map((d) => d.id)
+                .concat(
+                  datasets.some(
+                    (d) => !!d.schema_id && d.schema_id !== "visual-v1",
+                  )
+                    ? []
+                    : datasets
+                        .filter((d) => d.kind === "import")
+                        .map((d) => d.id),
+                ),
       );
   }, [datasets.length]);
   const bodyRecon = () => ({
