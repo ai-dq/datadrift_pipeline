@@ -125,32 +125,8 @@ p {
   background: var(--blue);
   color: white;
 }
-.workspace-mark {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 13px 10px;
-  display: flex;
-  gap: 10px;
-  margin: 28px 0;
-}
-.avatar {
-  background: #ecf2ff;
-  color: var(--blue);
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-}
-.workspace-mark strong {
-  font-size: 12px;
-  display: block;
-}
-.workspace-mark small {
-  font-size: 10px;
-  color: var(--muted);
+.sidebar nav {
+  margin-top: 28px;
 }
 .nav-group {
   margin-bottom: 25px;
@@ -968,7 +944,6 @@ hr {
   .brand {
     font-size: 20px;
   }
-  .workspace-mark,
   .sidebar-bottom,
   .nav-label {
     display: none;

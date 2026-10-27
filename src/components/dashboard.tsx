@@ -651,13 +651,6 @@ export default function Dashboard({ path }: { path: string[] }) {
           </span>
           DataDrift
         </Link>
-        <div className="workspace-mark">
-          <span className="avatar">D</span>
-          <div>
-            <strong>DataOps · MLOps</strong>
-            <small>속성추출 워크스페이스</small>
-          </div>
-        </div>
         <nav>
           {nav.map((group) => (
             <div className="nav-group" key={group.group}>
