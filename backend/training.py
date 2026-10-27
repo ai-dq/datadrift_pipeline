@@ -12,6 +12,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from . import taxonomy as taxonomy
 
 FIELDS = [
     "pattern",
@@ -74,27 +75,18 @@ def parse(raw):
         return None
 
 
-def valid_schema(prediction):
-    if not isinstance(prediction, dict) or set(prediction) != set(FIELDS):
-        return False
-    for field, value in prediction.items():
-        if field == "details":
-            if not isinstance(value, list) or any(
-                not isinstance(v, str) or v not in SCHEMA[field] for v in value
-            ):
-                return False
-        elif not isinstance(value, str) or value not in SCHEMA[field]:
-            return False
-    return True
+def valid_schema(prediction, schema_id=taxonomy.LEGACY, scope=None):
+    return taxonomy.valid(prediction, schema_id, scope)
 
 
-def metrics(rows, predictions):
-    by_field = {f: {"correct": 0, "count": 0} for f in FIELDS}
+def metrics(rows, predictions, schema_id=taxonomy.LEGACY):
+    fields = list(taxonomy.schema(schema_id))
+    by_field = {f: {"correct": 0, "count": 0} for f in fields}
     exact = 0
     for row, pred in zip(rows, predictions):
         correct = True
         scored = 0
-        for field in FIELDS:
+        for field in fields:
             truth = row["target"].get(field)
             if field in row.get("unscored_fields", []) or truth in (None, "unknown"):
                 continue
@@ -113,7 +105,10 @@ def metrics(rows, predictions):
         "macro_attribute_accuracy": sum(scores) / len(scores) if scores else None,
         "exact_match": exact / len(rows),
         "parse_failures": sum(p is None for p in predictions),
-        "schema_failures": sum(not valid_schema(p) for p in predictions),
+        "schema_failures": sum(
+            not valid_schema(p, schema_id, r.get("category"))
+            for r, p in zip(rows, predictions)
+        ),
         "fields": {
             f: v | {"accuracy": v["correct"] / v["count"] if v["count"] else None}
             for f, v in by_field.items()
@@ -135,7 +130,11 @@ def main(path):
     torch.set_num_threads(4)
     torch.manual_seed(req["seed"])
     torch.cuda.set_per_process_memory_fraction(0.55)
-    prompt_text = payload.get("prompt") or PROMPT
+    schema_id = payload.get("schema_id", taxonomy.LEGACY)
+    fields = list(taxonomy.schema(schema_id))
+    prompt_text = payload.get("prompt") or (
+        taxonomy.prompt() if schema_id == taxonomy.CURRENT else PROMPT
+    )
     progress = {
         "phase": "loading",
         "step": 0,
@@ -205,7 +204,10 @@ def main(path):
                 "role": "user",
                 "content": [
                     {"type": "image", "image": im},
-                    {"type": "text", "text": prompt_text},
+                    {
+                        "type": "text",
+                        "text": taxonomy.row_prompt(prompt_text, row, schema_id),
+                    },
                 ],
             }
         ]
@@ -266,7 +268,7 @@ def main(path):
             if tokens[:-1] != encoded["input_ids"]:
                 raise ValueError("Answer token alignment mismatch")
             mask = torch.ones(len(tokens), dtype=torch.bool, device="cuda:0")
-            for field in FIELDS:
+            for field in fields:
                 if (
                     field not in row.get("unscored_fields", [])
                     and row["target"].get(field) != "unknown"
@@ -325,6 +327,10 @@ def main(path):
         write(
             out / "result.json",
             {
+                "schema_id": schema_id,
+                "taxonomy_snapshot": taxonomy.BOOK
+                if schema_id == taxonomy.CURRENT
+                else None,
                 "optimizer_steps": req["max_steps"],
                 "training_sample_ids": sorted(set(used)),
                 "adapter_sha256": sha(out / "adapter/adapter_model.safetensors"),
@@ -365,14 +371,15 @@ def main(path):
                     "split": row["split"],
                     "raw": raw,
                     "prediction": pred,
-                    "schema_valid": valid_schema(pred),
+                    "schema_valid": valid_schema(pred, schema_id, row.get("category")),
                     "target": row["target"],
                     "human_verified": row["human_verified"],
                     "label_source": row["label_source"],
                 }
             )
             report(phase="evaluating", step=i + 1)
-        result = metrics(rows, predictions) | {
+        result = metrics(rows, predictions, schema_id) | {
+            "schema_id": schema_id,
             "count": len(rows),
             "split": req["split"],
             "predictions": records,
@@ -383,7 +390,7 @@ def main(path):
         for source in sorted({r["source"] for r in rows}):
             pairs = [(r, p) for r, p in zip(rows, predictions) if r["source"] == source]
             result["by_source"][source] = metrics(
-                [r for r, p in pairs], [p for r, p in pairs]
+                [r for r, p in pairs], [p for r, p in pairs], schema_id
             ) | {"count": len(pairs)}
         write(out / "result.json", result)
     report(phase="completed")

@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { LabelEditor, type LabelSample } from "@/components/label-editor";
 
 type Dataset = {
+  schema_id?: string;
   id: string;
   name: string;
   workspace_id: string;
@@ -41,6 +42,7 @@ type Workspace = {
   datasets: Dataset[];
 };
 type Model = {
+  schema_id?: string;
   id: string;
   name: string;
   family: string;
@@ -110,7 +112,10 @@ type DriftField = {
 };
 type Sample = LabelSample;
 const names: Record<string, string> = {
-  pattern: "패턴",
+  color_code: "색상 코드",
+  fabric: "원단 유형",
+  origin: "생산처",
+  pattern: "무늬",
   fit: "핏",
   sleeve: "소매",
   length: "길이",
@@ -483,13 +488,24 @@ export default function Dashboard({ path }: { path: string[] }) {
               ? "기본 모델과 학습된 모델의 버전, 데이터 출처를 관리합니다."
               : "실행 상태와 실제 계산 결과를 확인합니다.";
   const usableModels = models.filter(
-    (m) => m.status === "ready" && m.available,
+    (m) =>
+      m.status === "ready" &&
+      m.available &&
+      (m.kind === "base" ||
+        (m.schema_id || "visual-v1") ===
+          (currentDataset?.schema_id || "visual-v1")),
   );
   const selectedModel =
     usableModels.find((m) => m.id === modelId) ||
     (!detail ? usableModels[0] : undefined);
   const modelOptions = models
-    .filter((m) => m.status === "ready")
+    .filter(
+      (m) =>
+        m.status === "ready" &&
+        (m.kind === "base" ||
+          (m.schema_id || "visual-v1") ===
+            (currentDataset?.schema_id || "visual-v1")),
+    )
     .map((m) => (
       <option key={m.id} value={m.id} disabled={!m.available}>
         {m.name}
@@ -498,7 +514,8 @@ export default function Dashboard({ path }: { path: string[] }) {
     ));
   const datasetOptions = datasets.map((d) => (
     <option key={d.id} value={d.id}>
-      {d.name} · {num(d.count)}개
+      {d.name} · {num(d.count)}개 ·{" "}
+      {d.schema_id && d.schema_id !== "visual-v1" ? "비케이브" : "기존 기준"}
     </option>
   ));
   const runKind =
@@ -527,7 +544,26 @@ export default function Dashboard({ path }: { path: string[] }) {
       setParentIds((ids) =>
         ids.length
           ? ids
-          : datasets.filter((d) => d.kind === "import").map((d) => d.id),
+          : datasets
+              .filter(
+                (d) =>
+                  d.schema_id &&
+                  d.kind === "taxonomy_migration" &&
+                  d.parent_ids.some(
+                    (id) =>
+                      datasets.find((p) => p.id === id)?.kind === "import",
+                  ),
+              )
+              .map((d) => d.id)
+              .concat(
+                datasets.some(
+                  (d) => !!d.schema_id && d.schema_id !== "visual-v1",
+                )
+                  ? []
+                  : datasets
+                      .filter((d) => d.kind === "import")
+                      .map((d) => d.id),
+              ),
       );
   }, [datasets.length]);
   const bodyRecon = () => ({
@@ -982,7 +1018,11 @@ export default function Dashboard({ path }: { path: string[] }) {
                                     <Badge>
                                       {r.human_verified
                                         ? "사람 검증"
-                                        : r.label_history?.length
+                                        : r.label_history?.some(
+                                              (h) =>
+                                                h.channel ===
+                                                "manual_web_or_api",
+                                            )
                                           ? "수동 수정"
                                           : "AI 레이블"}
                                     </Badge>

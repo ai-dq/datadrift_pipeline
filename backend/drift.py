@@ -3,7 +3,7 @@
 from collections import Counter
 import numpy as np
 from PIL import Image, ImageOps
-from .catalog import FIELDS
+from . import taxonomy
 
 
 def js(a, b):
@@ -37,7 +37,8 @@ def histogram(rows):
 
 def detect(reference, current, threshold):
     fields = []
-    for field in FIELDS:
+    schema_id = reference[0].get("schema_id", taxonomy.LEGACY)
+    for field in taxonomy.schema(schema_id):
 
         def counts(rows):
             result = Counter()

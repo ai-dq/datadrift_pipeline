@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel, Field, ConfigDict
 from . import store as s
 from .catalog import initialize, import_labeled, model_available
-from .training import SCHEMA, valid_schema
+from . import taxonomy
 
 
 @asynccontextmanager
@@ -141,7 +141,10 @@ def edit_workspace(wid: str, body: Workspace):
 
 @app.post("/api/imports/labeled")
 def imports():
-    return import_labeled()
+    from .migrate_taxonomy import migrate
+
+    imported = import_labeled()
+    return migrate({d["id"] for d in imported})
 
 
 @app.get("/api/datasets")
@@ -204,16 +207,20 @@ def image(did: str, sid: str):
 
 
 @app.get("/api/label-schema")
-def label_schema():
-    return SCHEMA
+def label_schema(schema_id: str = taxonomy.CURRENT, category: str | None = None):
+    return taxonomy.schema(schema_id, category)
+
+
+@app.get("/api/taxonomy")
+def taxonomy_definition():
+    return taxonomy.BOOK | {
+        "field_names": taxonomy.NAMES,
+        "categories_with_attributes": taxonomy.CATEGORIES,
+    }
 
 
 @app.post("/api/datasets/{did}/samples/{sid}/labels", status_code=201)
 def edit_labels(did: str, sid: str, body: LabelEdit):
-    if not valid_schema(body.target):
-        raise ValueError("14개 속성을 모두 입력하고 허용된 값을 선택하세요.")
-    if not set(body.unscored_fields) <= set(SCHEMA):
-        raise ValueError("평가 제외 속성이 올바르지 않습니다.")
     with s.db() as c:
         c.execute("BEGIN IMMEDIATE")
         original = s.get("dataset", did, c)
@@ -221,6 +228,13 @@ def edit_labels(did: str, sid: str, body: LabelEdit):
         row = next((r for r in version["rows"] if r["id"] == sid), None)
         if row is None:
             raise HTTPException(404, "Sample not found")
+        schema_id = original.get("schema_id", taxonomy.LEGACY)
+        if not taxonomy.valid(body.target, schema_id, row.get("category")):
+            raise ValueError("선택한 기준과 카테고리의 속성·허용값을 확인하세요.")
+        if not set(body.unscored_fields) <= set(
+            taxonomy.schema(schema_id, row.get("category"))
+        ):
+            raise ValueError("평가 제외 속성이 올바르지 않습니다.")
         timestamp, vid = s.now(), s.uid()
         row.setdefault("original_label_source", row.get("label_source", "unknown"))
         row.setdefault("label_history", []).append(
@@ -287,6 +301,9 @@ def export(did: str):
 def reconstruct(body: Reconstruction):
     s.get("workspace", body.workspace_id)
     parents = [s.get("dataset", did) for did in dict.fromkeys(body.dataset_ids)]
+    schema_ids = {d.get("schema_id", taxonomy.LEGACY) for d in parents}
+    if len(schema_ids) != 1:
+        raise ValueError("서로 다른 레이블 기준은 함께 재구성할 수 없습니다.")
     unique = {}
     for d in parents:
         for row in d["rows"]:
@@ -328,6 +345,7 @@ def reconstruct(body: Reconstruction):
         "name": body.name,
         "created_at": s.now(),
         "kind": "reconstruction",
+        "schema_id": next(iter(schema_ids)),
         "rows": selected,
         "parent_ids": [d["id"] for d in parents],
         "fingerprint": fingerprint,
@@ -369,12 +387,20 @@ def create_job(body: Job):
         if not body.reference_id or body.reference_id == body.dataset_id:
             raise ValueError("서로 다른 비교 데이터셋을 선택하세요.")
         ref = s.get("dataset", body.reference_id)
+        if ref.get("schema_id", taxonomy.LEGACY) != d.get("schema_id", taxonomy.LEGACY):
+            raise ValueError("같은 레이블 기준의 데이터셋끼리 비교하세요.")
         if not d["rows"] or not ref["rows"]:
             raise ValueError("Empty comparison dataset")
     else:
         if not body.model_id:
             raise ValueError("모델을 선택하세요.")
         m = s.get("model", body.model_id)
+        if m["kind"] == "lora" and m.get("schema_id", taxonomy.LEGACY) != d.get(
+            "schema_id", taxonomy.LEGACY
+        ):
+            raise ValueError(
+                "모델과 데이터셋의 레이블 기준이 다릅니다. 동일 기준 모델 또는 기본 모델을 선택하세요."
+            )
         if m["status"] != "ready":
             raise ValueError("보관된 모델은 사용할 수 없습니다.")
         if not model_available(m):

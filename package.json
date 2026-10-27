@@ -11,7 +11,8 @@
     "test:browser": "node tests/browser-smoke.cjs",
     "test:workflows": "node tests/workflows.cjs && node tests/reconstruction-save.cjs && PYTHONPATH=. .venv/bin/python tests/cleanup_workflows.py",
     "test:edges": "node tests/edge-cases.cjs",
-    "test:labels": "node tests/label-editor.cjs && PYTHONPATH=. .venv/bin/python tests/cleanup_labels.py"
+    "test:labels": "node tests/label-editor.cjs && PYTHONPATH=. .venv/bin/python tests/cleanup_labels.py",
+    "test:taxonomy": "node tests/taxonomy-browser.cjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.5.0",

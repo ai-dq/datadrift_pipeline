@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from . import store as s
+from . import taxonomy
 from .catalog import model_path
 from .drift import detect
 
@@ -55,6 +56,7 @@ def run(j):
         )
     payload = {
         "prompt": prompt,
+        "schema_id": dataset.get("schema_id", taxonomy.LEGACY),
         "request": req,
         "model": model,
         "base_model": str(model_path(model["family"])),
@@ -122,6 +124,8 @@ def run(j):
                             "training_job_id": jid,
                             "dataset_id": dataset["id"],
                             "parent_id": model["id"],
+                            "schema_id": result.get("schema_id", taxonomy.LEGACY),
+                            "taxonomy_snapshot": result.get("taxonomy_snapshot"),
                             "prompt": result["prompt"],
                             "prompt_sha256": result["prompt_sha256"],
                         },

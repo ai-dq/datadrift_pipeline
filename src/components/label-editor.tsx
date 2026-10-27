@@ -18,15 +18,18 @@ export type LabelSample = {
   id: string;
   product_id: string;
   source: string;
+  category?: string;
+  schema_id?: string;
   split: string;
   target: Record<string, unknown>;
   label_source: string;
   original_label_source?: string;
   human_verified: boolean;
   unscored_fields: string[];
-  label_history?: { at: string; note: string }[];
+  label_history?: { at: string; note: string; channel?: string }[];
 };
 type Version = {
+  schema_id?: string;
   id: string;
   name: string;
   workspace_id: string;
@@ -37,7 +40,7 @@ type Version = {
   kind: string;
   parent_ids: string[];
 };
-const groups = [
+const legacyGroups = [
   {
     title: "형태와 실루엣",
     fields: [
@@ -96,6 +99,11 @@ export function LabelEditor({
   onMove: (direction: number) => void;
   onSaved: (dataset: Version, sample: LabelSample) => void;
 }) {
+  const isBkave = !!dataset.schema_id && dataset.schema_id !== "visual-v1";
+  const [taxonomy, setTaxonomy] = useState<{
+    name: string;
+    colors: { code: string; name: string; group: string }[];
+  } | null>(null);
   const [schema, setSchema] = useState<Record<string, string[]> | null>(null);
   const [target, setTarget] = useState(sample.target);
   const [excluded, setExcluded] = useState(sample.unscored_fields || []);
@@ -151,7 +159,10 @@ export function LabelEditor({
     };
     document.addEventListener("keydown", keydown);
     const controller = new AbortController();
-    fetch("/api/label-schema", { signal: controller.signal })
+    fetch(
+      `/api/label-schema?schema_id=${encodeURIComponent(dataset.schema_id || "visual-v1")}${isBkave ? "&category=" + encodeURIComponent(sample.category || "") : ""}`,
+      { signal: controller.signal },
+    )
       .then(async (r) => {
         if (!r.ok)
           throw new Error("속성 목록을 불러오지 못했습니다. 다시 열어주세요.");
@@ -160,6 +171,16 @@ export function LabelEditor({
       .catch((e) => {
         if (e.name !== "AbortError") setError(e.message);
       });
+    if (isBkave)
+      fetch("/api/taxonomy", { signal: controller.signal })
+        .then((r) => {
+          if (!r.ok) throw new Error("기준 사전을 불러오지 못했습니다.");
+          return r.json();
+        })
+        .then(setTaxonomy)
+        .catch((e) => {
+          if (e.name !== "AbortError") setError(e.message);
+        });
     return () => {
       controller.abort();
       document.removeEventListener("keydown", keydown);
@@ -209,8 +230,48 @@ export function LabelEditor({
       setBusy(false);
     }
   }
+  const groups = isBkave
+    ? [
+        {
+          title: "형태와 실루엣",
+          fields: [
+            ["fit", "핏"],
+            ["length", "기장"],
+            ["sleeve", "소매 길이"],
+            ["neckline", "넥라인"],
+          ],
+        },
+        {
+          title: "무늬와 원단",
+          fields: [
+            ["pattern", "무늬"],
+            ["fabric", "원단 유형"],
+          ],
+        },
+        {
+          title: "색상과 생산처",
+          fields: [
+            ["color_code", "색상 코드"],
+            ["origin", "생산처"],
+          ],
+        },
+      ]
+        .map((group) => ({
+          ...group,
+          fields: group.fields.filter(
+            ([field]) => schema?.[field]?.[0] !== "not_applicable",
+          ),
+        }))
+        .filter((group) => group.fields.length)
+    : legacyGroups;
+  const applicableCount = Object.keys(target).filter(
+    (k) => target[k] !== "not_applicable",
+  ).length;
   const completed = Object.keys(target).filter(
-    (k) => target[k] !== "unknown" && !excluded.includes(k),
+    (k) =>
+      target[k] !== "unknown" &&
+      target[k] !== "not_applicable" &&
+      !excluded.includes(k),
   ).length;
   return (
     <div className="label-backdrop" onClick={() => leave(onClose)}>
@@ -229,7 +290,8 @@ export function LabelEditor({
             </span>
             <div>
               <h2>
-                레이블 상세 <span>속성추출</span>
+                레이블 상세{" "}
+                <span>{isBkave ? "비케이브 기준" : "기존 기준"}</span>
               </h2>
               <p>{sample.product_id}</p>
             </div>
@@ -314,7 +376,13 @@ export function LabelEditor({
                   {sample.human_verified ? "사람 검토 완료" : "사람 검토 전"}
                 </span>
                 <span className="label-pill">
-                  {sample.label_history?.length ? "수동 수정본" : "AI 레이블"}
+                  {sample.label_history?.some(
+                    (h) => h.channel === "manual_web_or_api",
+                  )
+                    ? "수동 수정본"
+                    : isBkave
+                      ? "기준 변환본"
+                      : "AI 레이블"}
                 </span>
               </div>
               <p>
@@ -340,10 +408,23 @@ export function LabelEditor({
             <div className="label-fields-heading">
               <div>
                 <h3>속성 레이블</h3>
-                <p>이미지와 비교하며 값을 수정하세요.</p>
+                <p>
+                  {isBkave
+                    ? `${sample.category} · ${taxonomy?.name || "비케이브"} 엑셀 기준`
+                    : "이미지와 비교하며 값을 수정하세요."}
+                </p>
               </div>
-              <span>{completed} / 14 입력됨</span>
+              <span>
+                {completed} / {applicableCount} 입력됨
+              </span>
             </div>
+            {isBkave && (
+              <div className="callout">
+                엑셀의 카테고리별 허용값입니다. 변환 과정에서 제외된 속성은 직접
+                검토한 뒤 제외 설정을 해제하세요. 생산처·세부 색상 코드는 근거가
+                있을 때만 입력하세요.
+              </div>
+            )}
             {error && (
               <div className="alert error" role="alert">
                 {error}
@@ -377,7 +458,9 @@ export function LabelEditor({
                         >
                           {(schema?.[field] || []).map((v) => (
                             <option key={v} value={v}>
-                              {display(v)}
+                              {field === "color_code" && v !== "unknown"
+                                ? `${v} · ${taxonomy?.colors.find((c) => c.code === v)?.name || v} (${taxonomy?.colors.find((c) => c.code === v)?.group || ""})`
+                                : display(v)}
                             </option>
                           ))}
                         </select>
@@ -404,7 +487,8 @@ export function LabelEditor({
               ))}
               <section className="label-section">
                 <h4>
-                  디테일 <span>복수 선택 · 선택하지 않으면 없음</span>
+                  {isBkave ? "디자인 디테일" : "디테일"}{" "}
+                  <span>복수 선택 · 선택하지 않으면 없음</span>
                 </h4>
                 <div className="label-chips">
                   {(schema?.details || []).map((value) => {
@@ -470,7 +554,8 @@ export function LabelEditor({
                   <span>
                     <strong>전체 속성을 직접 검토했습니다</strong>
                     <small>
-                      선택한 경우에만 이 이미지가 사람 검토 완료로 기록됩니다.
+                      선택한 경우에만 사람 검토 완료로 기록됩니다. 제외한 속성은
+                      그대로 제외됩니다.
                     </small>
                   </span>
                 </label>

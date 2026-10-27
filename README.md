@@ -49,3 +49,6 @@ DATADRIFT_TRAIN_PYTHON=/path/to/gpu-env/bin/python .venv/bin/python -m backend.w
 ai-dq/main `59fb8219dcdc3f65463777de1a93f6e9e77ca8e1`에서 시작해
 OCR/Label Studio/로그인 도메인을 정리했습니다. 기존 구현은 Git 기록에 남으며
 Apache-2.0 LICENSE를 유지합니다.
+
+비케이브 제공 엑셀 기준의 속성·색상 사전과 버전별 학습/평가를 지원합니다.
+기존 레이블의 변환 범위와 미확인 값 처리 방식은 [비케이브 기준 적용](docs/bkave-taxonomy.md)을 참고하세요.
