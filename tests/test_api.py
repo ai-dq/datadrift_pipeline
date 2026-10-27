@@ -210,3 +210,18 @@ def test_drift_same_distribution_is_zero():
 
     assert js({"a": 10, "b": 5}, {"a": 100, "b": 50}) == 0
     assert js({"a": 10}, {"b": 5}) == pytest.approx(1)
+
+
+def test_schema_failure_is_distinct_from_json_parsing():
+    from backend.training import SCHEMA, valid_schema
+
+    valid = {
+        field: [] if field == "details" else values[0]
+        for field, values in SCHEMA.items()
+    }
+    malformed = valid | {"fit": ["레귤러"]}
+    assert valid_schema(valid)
+    assert not valid_schema(malformed)
+    result = metrics([{"target": valid}, {"target": valid}], [valid, malformed])
+    assert result["parse_failures"] == 0
+    assert result["schema_failures"] == 1

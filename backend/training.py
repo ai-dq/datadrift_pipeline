@@ -74,6 +74,20 @@ def parse(raw):
         return None
 
 
+def valid_schema(prediction):
+    if not isinstance(prediction, dict) or set(prediction) != set(FIELDS):
+        return False
+    for field, value in prediction.items():
+        if field == "details":
+            if not isinstance(value, list) or any(
+                not isinstance(v, str) or v not in SCHEMA[field] for v in value
+            ):
+                return False
+        elif not isinstance(value, str) or value not in SCHEMA[field]:
+            return False
+    return True
+
+
 def metrics(rows, predictions):
     by_field = {f: {"correct": 0, "count": 0} for f in FIELDS}
     exact = 0
@@ -99,6 +113,7 @@ def metrics(rows, predictions):
         "macro_attribute_accuracy": sum(scores) / len(scores) if scores else None,
         "exact_match": exact / len(rows),
         "parse_failures": sum(p is None for p in predictions),
+        "schema_failures": sum(not valid_schema(p) for p in predictions),
         "fields": {
             f: v | {"accuracy": v["correct"] / v["count"] if v["count"] else None}
             for f, v in by_field.items()
@@ -350,6 +365,7 @@ def main(path):
                     "split": row["split"],
                     "raw": raw,
                     "prediction": pred,
+                    "schema_valid": valid_schema(pred),
                     "target": row["target"],
                     "human_verified": row["human_verified"],
                     "label_source": row["label_source"],
