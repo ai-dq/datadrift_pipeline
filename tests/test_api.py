@@ -1,0 +1,212 @@
+import copy
+import hashlib
+import pytest
+from fastapi.testclient import TestClient
+from backend import store as s
+from backend.api import app, reconstruct, Reconstruction
+from backend.training import metrics
+from backend.worker import claim
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    monkeypatch.setattr(s, "ROOT", tmp_path / "state")
+    monkeypatch.setenv("DATADRIFT_MODELS", str(tmp_path / "models"))
+    (tmp_path / "models/Qwen3.5-2B").mkdir(parents=True)
+    with TestClient(app) as client:
+        s.save("workspace", {"id": "w", "name": "test", "task": "attribute_extraction"})
+        rows = []
+        for i in range(12):
+            rows.append(
+                {
+                    "id": str(i),
+                    "product_id": str(i),
+                    "sha256": str(i),
+                    "source": "musinsa" if i < 6 else "gsshop",
+                    "split": "train"
+                    if i % 6 < 4
+                    else "validation"
+                    if i % 6 == 4
+                    else "test",
+                    "target": {"fit": "레귤러"},
+                    "image": str(tmp_path / "image.jpg"),
+                }
+            )
+        s.save(
+            "dataset",
+            {
+                "id": "d",
+                "workspace_id": "w",
+                "name": "fixture",
+                "fingerprint": "abc",
+                "rows": rows,
+            },
+        )
+        yield client
+
+
+def test_task_and_pagination(client):
+    assert (
+        client.post("/api/workspaces", json={"name": "ocr", "task": "ocr"}).status_code
+        == 422
+    )
+    assert client.get("/api/datasets/d/samples?limit=3").json()["total"] == 12
+    assert len(client.get("/api/datasets/d/samples?limit=3").json()["items"]) == 3
+    assert client.get("/api/datasets/d/samples?split=train").json()["total"] == 8
+    assert "image" not in client.get("/api/datasets/d/samples").json()["items"][0]
+    assert client.get("/api/datasets/missing").status_code == 404
+    assert client.get("/api/datasets/d/images/unknown").status_code == 404
+
+
+def test_reconstruction_preserves_heldout_and_reproducible(client):
+    body = Reconstruction(
+        workspace_id="w", name="mix", dataset_ids=["d"], train_budget=4
+    )
+    first = reconstruct(body)
+    second = reconstruct(body)
+    assert first["fingerprint"] == second["fingerprint"]
+    assert {r["id"] for r in first["rows"] if r["split"] != "train"} == {
+        "4",
+        "5",
+        "10",
+        "11",
+    }
+    trains = [r for r in first["rows"] if r["split"] == "train"]
+    assert len(trains) == 4
+    assert sum(r["source"] == "musinsa" for r in trains) == 2
+    assert (
+        client.post(
+            "/api/reconstructions", json=body.model_dump() | {"train_budget": 99}
+        ).status_code
+        == 422
+    )
+    conflict = copy.deepcopy(s.get("dataset", "d"))
+    conflict["id"] = "conflict"
+    conflict["rows"][0]["split"] = "test"
+    s.save("dataset", conflict)
+    assert (
+        client.post(
+            "/api/reconstructions",
+            json=body.model_dump() | {"dataset_ids": ["d", "conflict"]},
+        ).status_code
+        == 422
+    )
+
+
+def test_job_claim_cancel_and_validation(client):
+    body = {
+        "kind": "training",
+        "model_id": "qwen35_2b",
+        "dataset_id": "d",
+        "max_steps": 1,
+    }
+    job = client.post("/api/jobs", json=body).json()
+    assert claim()["id"] == job["id"]
+    assert claim() is None
+    assert client.post("/api/jobs/" + job["id"] + "/cancel").json()["cancel_requested"]
+    other = client.post("/api/jobs", json=body).json()
+    assert (
+        client.post("/api/jobs/" + other["id"] + "/cancel").json()["status"]
+        == "cancelled"
+    )
+    assert claim() is None
+    assert client.post("/api/jobs", json=body | {"max_steps": 0}).status_code == 422
+    assert client.post("/api/jobs", json=body | {"split": "train"}).status_code == 422
+    assert (
+        client.post(
+            "/api/jobs", json=body, headers={"Origin": "https://evil.example"}
+        ).status_code
+        == 403
+    )
+    client.patch(
+        "/api/models/qwen35_2b", json={"name": "Archived", "status": "archived"}
+    )
+    assert client.post("/api/jobs", json=body).status_code == 422
+
+
+def test_metric_counts_parse_failure_and_masks_unknown():
+    rows = [
+        {"target": {"fit": "레귤러", "details": []}, "unscored_fields": ["details"]},
+        {"target": {"fit": "unknown", "pattern": "무지"}},
+    ]
+    result = metrics(rows, [{"fit": "레귤러"}, None])
+    assert result["parse_failures"] == 1
+    assert result["fields"]["fit"]["count"] == 1
+    assert result["fields"]["details"]["count"] == 0
+    assert result["macro_attribute_accuracy"] == 0.5
+
+
+def test_import_is_atomic_idempotent_and_retains_provenance(client, tmp_path):
+    import json
+    from PIL import Image
+    from backend.catalog import import_labeled, FIELDS
+
+    folder = tmp_path / "inputs/bkcave_drift/experiments"
+    review = folder / "vlm_methods_review1000_20261006"
+    review.mkdir(parents=True)
+    gs = folder / "resnet18_gs251218_20261002"
+    gs.mkdir()
+    images = []
+    for color in ("red", "blue"):
+        path = tmp_path / (color + ".png")
+        Image.new("RGB", (8, 8), color).save(path)
+        images.append(
+            {
+                "image": str(path),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+        )
+    target = {f: [] if f == "details" else "unknown" for f in FIELDS}
+    manifest = [
+        images[0]
+        | {
+            "review_id": 1,
+            "product_id": "one",
+            "split": "train",
+            "review_status": "unreviewed",
+        }
+    ]
+    (review / "split_manifest.json").write_text(json.dumps(manifest))
+    (review / "reviews.jsonl").write_text(
+        json.dumps(
+            {
+                "review_id": 1,
+                "product_id": "one",
+                "image_sha256": images[0]["sha256"],
+                "status": "reviewed",
+                "target": target,
+                "reviewer": "AI reviewer",
+                "human_verified": False,
+            }
+        )
+        + "\n"
+    )
+    gsrows = [
+        images[1]
+        | {
+            "product_id": "two",
+            "split": "test",
+            "target": target,
+            "label_source": "pseudo label",
+        }
+    ]
+    (gs / "gs_labeled.json").write_text(json.dumps(gsrows))
+    first = import_labeled(tmp_path / "inputs")
+    second = import_labeled(tmp_path / "inputs")
+    assert [d["id"] for d in first] == [d["id"] for d in second]
+    assert first[0]["splits"] == {"train": 1} and first[1]["splits"] == {"test": 1}
+    row = s.get("dataset", first[0]["id"])["rows"][0]
+    assert row["human_verified"] is False and row["label_source"] == "AI reviewer"
+    count = len(s.all_of("dataset"))
+    gsrows[0]["sha256"] = "invalid"
+    (gs / "gs_labeled.json").write_text(json.dumps(gsrows))
+    with pytest.raises(ValueError, match="integrity"):
+        import_labeled(tmp_path / "inputs")
+    assert len(s.all_of("dataset")) == count
+
+
+def test_drift_same_distribution_is_zero():
+    from backend.drift import js
+
+    assert js({"a": 10, "b": 5}, {"a": 100, "b": 50}) == 0
+    assert js({"a": 10}, {"b": 5}) == pytest.approx(1)
