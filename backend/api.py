@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel, Field, ConfigDict
 from . import store as s
-from .catalog import initialize, import_labeled, model_path
+from .catalog import initialize, import_labeled, model_available
 
 
 @asynccontextmanager
@@ -276,19 +276,18 @@ def create_reconstruction(body: Reconstruction):
 
 @app.get("/api/models")
 def models():
-    return [
-        m | {"available": model_path(m["family"]).is_dir()} for m in s.all_of("model")
-    ]
+    return [m | {"available": model_available(m)} for m in s.all_of("model")]
 
 
 @app.patch("/api/models/{mid}")
 def rename_model(mid: str, body: Rename):
-    return s.patch("model", mid, **body.model_dump())
+    return s.patch("model", mid, **body.model_dump(exclude_unset=True))
 
 
 @app.get("/api/models/{mid}")
 def model(mid: str):
-    return s.get("model", mid)
+    m = s.get("model", mid)
+    return m | {"available": model_available(m)}
 
 
 @app.post("/api/jobs", status_code=201)
@@ -306,8 +305,8 @@ def create_job(body: Job):
         m = s.get("model", body.model_id)
         if m["status"] != "ready":
             raise ValueError("보관된 모델은 사용할 수 없습니다.")
-        if not model_path(m["family"]).is_dir():
-            raise ValueError("모델 파일이 서버에 없습니다.")
+        if not model_available(m):
+            raise ValueError("기본 모델 또는 LoRA 어댑터 파일이 서버에 없습니다.")
         partition = "train" if body.kind == "training" else body.split
         if not any(r["split"] == partition for r in d["rows"]):
             raise ValueError("Selected split is empty")

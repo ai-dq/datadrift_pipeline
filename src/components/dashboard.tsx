@@ -491,10 +491,16 @@ export default function Dashboard({ path }: { path: string[] }) {
             : section === "models"
               ? "기본 모델과 학습된 모델의 버전, 데이터 출처를 관리합니다."
               : "실행 상태와 실제 계산 결과를 확인합니다.";
+  const usableModels = models.filter(
+    (m) => m.status === "ready" && m.available,
+  );
+  const selectedModel =
+    usableModels.find((m) => m.id === modelId) ||
+    (!detail ? usableModels[0] : undefined);
   const modelOptions = models
     .filter((m) => m.status === "ready")
     .map((m) => (
-      <option key={m.id} value={m.id}>
+      <option key={m.id} value={m.id} disabled={!m.available}>
         {m.name}
         {!m.available ? " (파일 없음)" : ""}
       </option>
@@ -543,10 +549,12 @@ export default function Dashboard({ path }: { path: string[] }) {
   });
   async function submit(kind: string) {
     await act(async () => {
+      if (kind !== "drift" && !selectedModel)
+        throw new Error("사용 가능한 모델을 선택하세요.");
       const j = await api<Run>("/jobs", {
         kind,
         dataset_id: currentDataset?.id,
-        model_id: kind === "drift" ? undefined : modelId,
+        model_id: kind === "drift" ? undefined : selectedModel?.id,
         reference_id:
           kind === "drift"
             ? reference || datasets.find((d) => d.id !== currentDataset?.id)?.id
@@ -1178,10 +1186,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                       label="학습된 모델"
                       value={models.filter((m) => m.kind === "lora").length}
                     />
-                    <Stat
-                      label="사용 가능"
-                      value={models.filter((m) => m.status === "ready").length}
-                    />
+                    <Stat label="사용 가능" value={usableModels.length} />
                   </div>
                   <div className="toolbar">
                     <div className="search">
@@ -1377,9 +1382,14 @@ export default function Dashboard({ path }: { path: string[] }) {
                     >
                       <Select
                         label="시작 모델"
-                        value={modelId}
+                        value={selectedModel?.id || ""}
                         onChange={setModelId}
                       >
+                        {!selectedModel && (
+                          <option value="" disabled>
+                            사용 가능한 모델을 선택하세요
+                          </option>
+                        )}
                         {modelOptions}
                       </Select>
                       <Select
@@ -1428,7 +1438,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                       </label>
                       <button
                         className="button"
-                        disabled={busy || !currentDataset}
+                        disabled={busy || !currentDataset || !selectedModel}
                       >
                         학습 시작
                       </button>
@@ -1472,9 +1482,14 @@ export default function Dashboard({ path }: { path: string[] }) {
                     >
                       <Select
                         label="모델"
-                        value={modelId}
+                        value={selectedModel?.id || ""}
                         onChange={setModelId}
                       >
+                        {!selectedModel && (
+                          <option value="" disabled>
+                            사용 가능한 모델을 선택하세요
+                          </option>
+                        )}
                         {modelOptions}
                       </Select>
                       <Select
@@ -1504,7 +1519,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                       </label>
                       <button
                         className="button"
-                        disabled={busy || !currentDataset}
+                        disabled={busy || !currentDataset || !selectedModel}
                       >
                         평가 시작
                       </button>

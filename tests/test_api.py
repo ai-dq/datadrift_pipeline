@@ -136,6 +136,39 @@ def test_metric_counts_parse_failure_and_masks_unknown():
     assert result["macro_attribute_accuracy"] == 0.5
 
 
+def test_rename_preserves_archived_status(client):
+    client.patch("/api/models/qwen35_2b", json={"name": "old", "status": "archived"})
+    renamed = client.patch("/api/models/qwen35_2b", json={"name": "new"})
+    assert renamed.status_code == 200
+    assert renamed.json()["status"] == "archived"
+
+
+def test_missing_adapter_is_unavailable_and_rejected_before_queue(client, tmp_path):
+    model = s.get("model", "qwen35_2b") | {
+        "id": "trained",
+        "kind": "lora",
+        "adapter": str(tmp_path / "adapter"),
+    }
+    s.save("model", model)
+    body = {"kind": "evaluation", "model_id": "trained", "dataset_id": "d"}
+    assert client.get("/api/models/trained").json().get("available") is False
+    assert (
+        next(m for m in client.get("/api/models").json() if m["id"] == "trained")[
+            "available"
+        ]
+        is False
+    )
+    assert client.post("/api/jobs", json=body).status_code == 422
+    assert s.all_of("job") == []
+    adapter = tmp_path / "adapter"
+    adapter.mkdir()
+    (adapter / "adapter_config.json").write_text("{}")
+    assert client.post("/api/jobs", json=body).status_code == 422
+    (adapter / "adapter_model.safetensors").write_bytes(b"fixture")
+    assert client.get("/api/models/trained").json()["available"] is True
+    assert client.post("/api/jobs", json=body).status_code == 201
+
+
 def test_import_is_atomic_idempotent_and_retains_provenance(client, tmp_path):
     import json
     from PIL import Image

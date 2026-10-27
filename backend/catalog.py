@@ -52,6 +52,20 @@ def model_path(family):
     )
 
 
+def model_available(model):
+    if not model_path(model["family"]).is_dir():
+        return False
+    if model["kind"] == "lora":
+        if not model.get("adapter"):
+            return False
+        adapter = Path(model["adapter"])
+        return all(
+            (adapter / name).is_file()
+            for name in ("adapter_config.json", "adapter_model.safetensors")
+        )
+    return True
+
+
 def import_labeled(root=None):
     root = Path(root or os.environ["DATADRIFT_INPUT_ROOT"]).resolve()
     review_dir = root / "bkcave_drift/experiments/vlm_methods_review1000_20261006"
