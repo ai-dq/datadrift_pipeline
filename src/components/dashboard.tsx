@@ -1891,8 +1891,14 @@ export default function Dashboard({ path }: { path: string[] }) {
                           value={activeRun.result.threshold}
                         />
                       </div>
-                      <div className="callout">{activeRun.result.note}</div>
-                      <Panel title="속성 분포 차이">
+                      <div className="callout">
+                        {(activeRun.result.fields as DriftField[])?.some(
+                          (f) => f.q_value !== undefined,
+                        )
+                          ? "차이 감지는 JS 임계값 판정입니다. 각 속성을 누르면 유효 레이블 수·보정 q·카테고리 내 비교를 볼 수 있습니다. AI 레이블 오류와 제외율 차이가 영향을 줄 수 있으며 시간 경과에 따른 성능 저하를 확정하지 않습니다."
+                          : activeRun.result.note}
+                      </div>
+                      <Panel title="속성 분포 차이 · 항목을 눌러 상세 보기">
                         {((activeRun.result.fields as DriftField[]) || []).map(
                           (f) => (
                             <details key={f.field}>
@@ -1906,7 +1912,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                                 </div>
                                 <strong>{f.js_divergence.toFixed(4)}</strong>
                                 <Badge status={f.detected ? "failed" : "ready"}>
-                                  {f.detected ? "감지" : "정상"}
+                                  {f.detected ? "감지" : "임계값 미만"}
                                 </Badge>
                               </summary>
                               {f.q_value !== undefined && (

@@ -81,5 +81,5 @@ def detect(reference, current, threshold):
         "statistics": statistics,
         "image_histogram_js": image_score,
         "detected": image_score >= threshold or any(f["detected"] for f in fields),
-        "note": "출처 간 분포 차이입니다. 시간 경과에 따른 성능 저하나 통계적 유의성을 의미하지 않습니다. AI 레이블 생성 방식 차이도 포함될 수 있습니다.",
+        "note": "차이 감지는 JS 임계값 판정입니다. 속성별 보정 q와 카테고리 내 비교는 상세에서 확인하세요. AI 레이블 오류·제외율 차이가 영향을 줄 수 있으며 시간 경과에 따른 성능 저하를 확정하지 않습니다.",
     }
