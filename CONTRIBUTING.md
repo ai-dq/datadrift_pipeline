@@ -2,17 +2,17 @@
 
 ## 저장소 역할
 
-- `origin`: `ai-dq/datadrift_pipeline` — 개발 커밋을 `dev`에 직접 push합니다. 이 저장소에는 작업용 PR을 만들지 않습니다.
-- `upstream`: `keti-datadrift/datadrift_pipeline` — 기능별 PR을 통해 `dev`에 반영합니다.
+- `origin`: `ai-dq/datadrift_pipeline` — 사용자가 push를 요청하면 개발 커밋을 `dev`에 직접 push합니다. 이 저장소에는 작업용 PR을 만들지 않습니다.
+- `upstream`: `keti-datadrift/datadrift_pipeline` — 요청된 push 이후 PR을 통해 `dev`에 반영합니다.
 - 두 저장소의 `main`에는 push하거나 PR을 병합하지 않습니다. 직접 push 요청은 `main` 변경 승인을 뜻하지 않습니다.
 
 ## 기능 단위 작업
 
-1. 이전 KETI PR이 병합된 최신 `dev`에서 한 기능의 작업을 시작합니다. 커밋은 설명 가능한 단위로 나눕니다.
-2. 완료한 커밋을 `ai-dq/dev`에 직접 push합니다. 필요한 테스트·빌드·실제 동작 확인을 수행하고 결과와 한계를 기록합니다.
-3. 기능이 완료되면 `keti-datadrift/dev`을 base, `ai-dq/dev`을 head로 PR 하나를 만듭니다. 문제·변경 내용·호환성·검증 결과를 설명합니다.
+1. 로컬 `dev`에서 구현과 검증을 진행합니다. 커밋은 설명 가능한 단위로 나누며, push 요청 전에는 로컬에 변경을 모을 수 있습니다.
+2. 필요한 테스트·빌드·실제 동작 확인을 수행하고 결과와 한계를 기록합니다. 기능이 완료됐다는 이유로 자동 push하거나 PR을 만들지 않습니다.
+3. 사용자가 push를 요청했을 때만 해당 범위의 커밋을 `ai-dq/dev`에 직접 push한 뒤, `keti-datadrift/dev`을 base, `ai-dq/dev`을 head로 PR을 만듭니다. 문제·변경 내용·호환성·검증 결과를 설명합니다.
 4. PR 범위와 최신 head를 확인하고, 필수 검사·리뷰 조건을 충족하면 병합합니다. 커밋 이력을 보존하는 merge commit을 기본으로 사용하며 보호 규칙을 우회하지 않습니다.
-5. 병합 후 `upstream/dev`을 가져와 `ai-dq/dev`과 로컬 기준 브랜치를 fast-forward로 동기화합니다. 그다음 기능을 시작합니다.
+5. 병합 후 `upstream/dev`을 가져와 `ai-dq/dev`과 로컬 기준 브랜치를 fast-forward로 동기화합니다.
 
 PR이 열려 있는 동안에는 해당 기능의 수정만 추가합니다. 다른 독립 기능은 같은 PR에 누적하지 않습니다. 브랜치가 분기됐거나 다른 작업이 추가됐다면 먼저 이력을 확인하고 통합하며, 강제 push로 덮어쓰지 않습니다.
 
