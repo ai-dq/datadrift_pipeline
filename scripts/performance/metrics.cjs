@@ -19,6 +19,67 @@ function summarize(samples, targetMs) {
       values.length > 0 && failures === 0 && average(values) <= targetMs,
   };
 }
+// Equal weight for each item; never silently drop an item with no valid samples.
+function itemAverage(scenarios, targetMs, type) {
+  const items = scenarios.filter((s) => !type || s.type === type);
+  const values = items.map((s) => s.stats.meanMs);
+  const meanMs =
+    values.length && values.every(Number.isFinite) ? average(values) : null;
+  const complete =
+    items.length > 0 &&
+    items.every((s) => s.stats.attempts > 0 && s.stats.failures === 0);
+  return {
+    meanMs,
+    itemCount: items.length,
+    complete,
+    targetMet: complete && meanMs <= targetMs,
+  };
+}
+function trialTable(group, repeats) {
+  const columns = Array.from({ length: repeats }, (_, round) =>
+    Array.from({ length: group.concurrency }, (_, user) => ({
+      round,
+      user,
+      label: `${round + 1}회${group.concurrency > 1 ? `/사용자${user + 1}` : ""}(초)`,
+    })),
+  ).flat();
+  const seconds = (n) => (Number.isFinite(n) ? (n / 1000).toFixed(3) : "—");
+  const rows = group.scenarios.map((s) => ({
+    항목: s.name,
+    ...Object.fromEntries(
+      columns.map((c) => {
+        const sample = s.samples.find(
+          (x) => x.round === c.round && x.user === c.user,
+        );
+        return [
+          c.label,
+          !sample ? "미측정" : sample.ok ? seconds(sample.durationMs) : "실패",
+        ];
+      }),
+    ),
+    "항목 평균(초)": seconds(s.stats.meanMs),
+    상태: s.stats.failures
+      ? `실패 ${s.stats.failures}건 · 성공분 평균`
+      : "완료",
+  }));
+  for (const [name, result] of [
+    ["화면 항목 평균", group.itemAverages.pages],
+    ["기능 항목 평균", group.itemAverages.functions],
+    ["전체 항목 평균", group.itemAverages.all],
+  ]) {
+    rows.push({
+      항목: name,
+      ...Object.fromEntries(columns.map((c) => [c.label, ""])),
+      "항목 평균(초)": seconds(result.meanMs),
+      상태: result.complete
+        ? result.targetMet
+          ? "목표 이내"
+          : "목표 초과"
+        : "불완전 · 판정 불가",
+    });
+  }
+  return { headers: Object.keys(rows[0]), rows };
+}
 // Runs inside Chromium. Conditions are explicit content/API contracts, not networkidle.
 async function renderedReady({ conditions, timeoutMs, action = false }) {
   const start = action ? window.__benchmarkActionStart : 0;
@@ -117,4 +178,4 @@ async function renderedReady({ conditions, timeoutMs, action = false }) {
   }
   throw new Error("Render timeout; missing=" + JSON.stringify(missing));
 }
-module.exports = { summarize, renderedReady };
+module.exports = { summarize, itemAverage, trialTable, renderedReady };

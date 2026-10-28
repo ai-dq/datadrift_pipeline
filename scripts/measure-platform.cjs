@@ -6,7 +6,12 @@ const path = require("node:path");
 const os = require("node:os");
 const { execFileSync } = require("node:child_process");
 const { performance } = require("node:perf_hooks");
-const { summarize, renderedReady } = require("./performance/metrics.cjs");
+const {
+  summarize,
+  itemAverage,
+  trialTable,
+  renderedReady,
+} = require("./performance/metrics.cjs");
 function option(name, fallback) {
   const i = process.argv.indexOf("--" + name);
   if (i < 0) return fallback;
@@ -14,12 +19,27 @@ function option(name, fallback) {
     throw new Error("Missing value for --" + name);
   return process.argv[i + 1];
 }
+if (process.argv.includes("--help")) {
+  console.log(`통합 플랫폼 화면·기능 응답 시간 측정
+  npm run measure:platform                         각 항목 5회, 사용자 1명
+  npm run measure:platform -- --repeats 3           각 항목 3회
+  npm run measure:platform -- --vus 1,5 --repeats 5 동시 사용자별 비교
+  --base-url URL     대상 플랫폼 주소
+  --target-ms 2500   평균 목표(ms)
+  --timeout-ms 30000 준비 조건 대기 제한(ms)
+  --output PATH      새 결과 폴더(기존 결과 덮어쓰기 금지)
+
+워밍업은 항목별 1회이며 평균에서 제외합니다.
+콘솔과 report.html/trials.csv에 각 회차 시간, 항목 평균, 전체 항목 평균을 표시합니다.
+전체 항목 평균 = 각 항목 평균의 합 / 항목 수. 실패는 별도 표시합니다.`);
+  process.exit(0);
+}
 const base = option(
   "base-url",
   process.env.TEST_BASE_URL || "http://121.126.210.3:18091",
 ).replace(/\/$/, "");
-const repeats = Number(option("repeats", "10"));
-const vus = option("vus", "1,5").split(",").map(Number);
+const repeats = Number(option("repeats", "5"));
+const vus = option("vus", "1").split(",").map(Number);
 const targetMs = Number(option("target-ms", "2500"));
 const timeoutMs = Number(option("timeout-ms", "30000"));
 const output = path.resolve(
@@ -468,7 +488,18 @@ function writeReports(report) {
   ];
   const secs = (n) => (n == null ? "—" : (n / 1000).toFixed(3));
   let sections = "";
+  const trialsCsv = [];
+  const quote = (value) => '"' + String(value).replaceAll('"', '""') + '"';
   for (const group of report.groups) {
+    const table = trialTable(group, report.repeats);
+    trialsCsv.push(
+      [`동시 ${group.concurrency}명`],
+      table.headers,
+      ...table.rows.map((row) => table.headers.map((key) => row[key])),
+      [],
+    );
+    const trialHtml = `<table><thead><tr>${table.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${table.rows.map((row) => `<tr>${table.headers.map((h) => `<td>${escapeHtml(row[h])}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    sections += `<section><h2>동시 ${group.concurrency}명 · 각 항목 ${report.repeats}회</h2>${trialHtml}<p>전체 항목 평균 = 항목별 평균의 합 ÷ ${group.scenarios.length}. 표시값은 소수 셋째 자리로 반올림하며 계산은 원시 정밀도를 사용합니다.</p></section>`;
     const rows = group.scenarios
       .map((row) => {
         const s = row.stats;
@@ -491,8 +522,14 @@ function writeReports(report) {
         return `<tr><td>${escapeHtml(row.name)}</td><td>${row.type === "page" ? "화면" : "기능"}</td><td>${s.successes}/${s.attempts}</td><td>${secs(s.meanMs)}</td><td>${secs(s.p95Ms)}</td><td>${secs(s.maxMs)}</td><td>${s.failures}</td><td>${s.targetMet ? "충족" : "미충족"}</td></tr>`;
       })
       .join("");
-    sections += `<section><h2>동시 ${group.concurrency}명 · 평균 ${secs(group.overall.meanMs)}초</h2><p>화면 평균 ${secs(group.pages.meanMs)}초 · 기능 평균 ${secs(group.functions.meanMs)}초 · 전체 p95 ${secs(group.overall.p95Ms)}초 · 실패 ${group.overall.failures}/${group.overall.attempts}</p><table><thead><tr><th>시나리오</th><th>구분</th><th>성공/시도</th><th>평균(초)</th><th>p95(초)</th><th>최대(초)</th><th>실패</th><th>평균 목표</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+    sections += `<section><h2>보조 통계 · 동시 ${group.concurrency}명</h2><p>화면 평균 ${secs(group.pages.meanMs)}초 · 기능 평균 ${secs(group.functions.meanMs)}초 · 전체 p95 ${secs(group.overall.p95Ms)}초 · 실패 ${group.overall.failures}/${group.overall.attempts}</p><table><thead><tr><th>시나리오</th><th>구분</th><th>성공/시도</th><th>평균(초)</th><th>p95(초)</th><th>최대(초)</th><th>실패</th><th>평균 목표</th></tr></thead><tbody>${rows}</tbody></table></section>`;
   }
+  fs.writeFileSync(
+    path.join(output, "trials.csv"),
+    "\uFEFF" +
+      trialsCsv.map((row) => row.map(quote).join(",")).join("\n") +
+      "\n",
+  );
   fs.writeFileSync(path.join(output, "summary.csv"), csv.join("\n") + "\n");
   fs.writeFileSync(
     path.join(output, "report.json"),
@@ -500,7 +537,7 @@ function writeReports(report) {
   );
   fs.writeFileSync(
     path.join(output, "report.html"),
-    `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>통합 플랫폼 응답 지연 측정</title><style>body{font:16px/1.65 system-ui,sans-serif;color:#172b4d;background:#f3f6fa;margin:0;padding:32px}main{max-width:1100px;margin:auto}section{background:white;padding:24px;border:1px solid #dce3ed;border-radius:12px;margin:24px 0;overflow:auto}h1{font-size:28px}h2{font-size:21px}table{border-collapse:collapse;width:100%;white-space:nowrap}th,td{padding:10px;text-align:right;border-bottom:1px solid #e6eaf0}th:first-child,td:first-child{text-align:left}th{background:#edf3ff}.note{padding:16px;background:#fff4d6;border-radius:8px}code{overflow-wrap:anywhere}</style><main><h1>통합 플랫폼 화면·기능 응답 지연</h1><p>${escapeHtml(report.startedAt)} · ${escapeHtml(base)} · 목표 평균 ${secs(targetMs)}초</p><p class="note">현재 플랫폼 자체 측정입니다. 과제 전체 도구 연계 평가·공인시험 결과가 아닙니다. ${report.environment.sameHost ? "부하 생성기와 서버가 같은 호스트입니다." : "대상 서버와 부하 생성기 배치를 확인하세요."} 학습·추론 완료 시간을 측정하지 않습니다.</p><section><h2>측정 조건</h2><p>실제 Chromium ${escapeHtml(report.environment.browser)} · 1440×1000 · 브라우저 컨텍스트 매회 새로 생성 · 서버 캐시는 유지 · 시나리오별 사용자당 ${repeats}회 · 프로필별 워밍업 1회 제외</p><p>페이지 탐색 시작/기능 클릭 이벤트부터 API 데이터에 맞는 DOM, 현재 페이지의 모든 이미지 decode, 폰트, 연속 2프레임 표시 기회를 확인합니다. 이미지 지연 로딩은 현재 페이지에 한해 eager로 바꿔 화면 아래 이미지도 포함합니다. networkidle 고정 대기는 넣지 않습니다.</p><p>평균·백분위는 성공 표본 기준이며 실패는 별도로 공개합니다. 실패가 하나라도 있으면 목표 충족으로 판정하지 않습니다. 전체 평균은 동일 횟수로 측정한 13개 시나리오의 동일 가중 평균이며 화면/기능 평균도 분리합니다.</p></section>${sections}<section><h2>해석 범위</h2><ul>${report.limitations.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul><p>원시 측정: samples.jsonl · 요약: summary.csv · 환경/모니터링: report.json</p></section></main></html>`,
+    `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>통합 플랫폼 응답 지연 측정</title><style>body{font:16px/1.65 system-ui,sans-serif;color:#172b4d;background:#f3f6fa;margin:0;padding:32px}main{max-width:1100px;margin:auto}section{background:white;padding:24px;border:1px solid #dce3ed;border-radius:12px;margin:24px 0;overflow:auto}h1{font-size:28px}h2{font-size:21px}table{border-collapse:collapse;width:100%;white-space:nowrap}th,td{padding:10px;text-align:right;border-bottom:1px solid #e6eaf0}th:first-child,td:first-child{text-align:left}th{background:#edf3ff}.note{padding:16px;background:#fff4d6;border-radius:8px}code{overflow-wrap:anywhere}</style><main><h1>통합 플랫폼 화면·기능 응답 지연</h1><p>${escapeHtml(report.startedAt)} · ${escapeHtml(base)} · 목표 평균 ${secs(targetMs)}초</p><p class="note">현재 플랫폼 자체 측정입니다. 과제 전체 도구 연계 평가·공인시험 결과가 아닙니다. ${report.environment.sameHost ? "부하 생성기와 서버가 같은 호스트입니다." : "대상 서버와 부하 생성기 배치를 확인하세요."} 학습·추론 완료 시간을 측정하지 않습니다.</p><section><h2>측정 조건</h2><p>실제 Chromium ${escapeHtml(report.environment.browser)} · 1440×1000 · 브라우저 컨텍스트 매회 새로 생성 · 서버 캐시는 유지 · 시나리오별 사용자당 ${repeats}회 · 프로필별 워밍업 1회 제외</p><p>페이지 탐색 시작/기능 클릭 이벤트부터 API 데이터에 맞는 DOM, 현재 페이지의 모든 이미지 decode, 폰트, 연속 2프레임 표시 기회를 확인합니다. 이미지 지연 로딩은 현재 페이지에 한해 eager로 바꿔 화면 아래 이미지도 포함합니다. networkidle 고정 대기는 넣지 않습니다.</p><p>평균·백분위는 성공 표본 기준이며 실패는 별도로 공개합니다. 실패가 하나라도 있으면 목표 충족으로 판정하지 않습니다. 전체 항목 평균은 항목별 평균의 합을 항목 수로 나눕니다. 실패가 있는 항목은 성공분 평균이라고 표시하고 전체 판정은 불완전으로 처리합니다. 화면/기능 평균도 분리합니다.</p></section>${sections}<section><h2>해석 범위</h2><ul>${report.limitations.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul><p>회차별 시간: trials.csv · 원시 측정: samples.jsonl · 요약: summary.csv · 환경/모니터링: report.json</p></section></main></html>`,
   );
 }
 async function main() {
@@ -573,6 +610,10 @@ async function main() {
   }, 1000);
   try {
     for (const concurrency of vus) {
+      console.log(
+        `\n동시 ${concurrency}명 · ${definitions.length}개 항목 × 각 ${repeats}회 = 본 측정 ${concurrency * definitions.length * repeats}회`,
+      );
+      console.log("준비: 항목별 워밍업 1회 실행(평균에서 제외)");
       stage = `warmup-vu${concurrency}`;
       for (const def of definitions) {
         const result = await runSample(
@@ -589,36 +630,39 @@ async function main() {
           throw new Error("Warmup failed for " + def.id + ": " + result.error);
       }
       stage = `measured-vu${concurrency}`;
-      for (let round = 0; round < repeats; round++) {
-        // Deterministically rotate order; equal sample counts for every scenario.
-        const order = definitions.map(
-          (_, i) => definitions[(i + round) % definitions.length],
-        );
-        for (const def of order) {
-          samples.push(
-            ...(await Promise.all(
-              Array.from({ length: concurrency }, (_, user) =>
-                runSample(
-                  browser,
-                  def,
-                  definitions,
-                  user,
-                  round,
-                  concurrency,
-                  false,
-                ),
+      for (const def of definitions) {
+        console.log(`\n[${def.name}]`);
+        const itemSamples = [];
+        for (let round = 0; round < repeats; round++) {
+          const batch = await Promise.all(
+            Array.from({ length: concurrency }, (_, user) =>
+              runSample(
+                browser,
+                def,
+                definitions,
+                user,
+                round,
+                concurrency,
+                false,
               ),
-            )),
+            ),
           );
+          samples.push(...batch);
+          itemSamples.push(...batch);
+          for (const sample of batch)
+            console.log(
+              `  ${round + 1}/${repeats}회${concurrency > 1 ? ` · 사용자 ${sample.user + 1}` : ""}: ${sample.ok ? (sample.durationMs / 1000).toFixed(3) + "초" : "실패 — " + sample.error}`,
+            );
         }
+        const stats = summarize(itemSamples, targetMs);
         console.log(
-          `VU=${concurrency} round=${round + 1}/${repeats} failures=${samples.filter((s) => !s.warmup && !s.ok).length}`,
+          `  → 항목 평균: ${stats.meanMs == null ? "계산 불가" : (stats.meanMs / 1000).toFixed(3) + "초"}${stats.failures ? ` (실패 ${stats.failures}건, 성공분 평균)` : ""}`,
         );
       }
       const measured = samples.filter(
         (s) => !s.warmup && s.concurrency === concurrency,
       );
-      groups.push({
+      const group = {
         concurrency,
         overall: summarize(measured, targetMs),
         pages: summarize(
@@ -633,12 +677,29 @@ async function main() {
           id: d.id,
           name: d.name,
           type: d.type,
+          samples: measured
+            .filter((s) => s.id === d.id)
+            .map(({ round, user, ok, durationMs, error }) => ({
+              round,
+              user,
+              ok,
+              durationMs,
+              error,
+            })),
           stats: summarize(
             measured.filter((s) => s.id === d.id),
             targetMs,
           ),
         })),
-      });
+      };
+      group.itemAverages = {
+        all: itemAverage(group.scenarios, targetMs),
+        pages: itemAverage(group.scenarios, targetMs, "page"),
+        functions: itemAverage(group.scenarios, targetMs, "function"),
+      };
+      groups.push(group);
+      console.log(`\n동시 ${concurrency}명 결과표 (초)`);
+      console.table(trialTable(group, repeats).rows);
     }
     stage = "finished";
     const after = await snapshot();
@@ -666,17 +727,16 @@ async function main() {
       ],
     };
     writeReports(report);
+    for (const g of groups) {
+      const a = g.itemAverages.all;
+      console.log(
+        `\n동시 ${g.concurrency}명 전체 항목 평균: ${a.meanMs == null ? "계산 불가" : (a.meanMs / 1000).toFixed(3) + "초"} / 목표 ${(targetMs / 1000).toFixed(3)}초 · ${!a.complete ? "불완전 — 판정 불가" : a.targetMet ? "목표 이내" : "목표 초과"}`,
+      );
+    }
     console.log(
-      JSON.stringify(
-        {
-          output,
-          groups: groups.map((g) => ({ vus: g.concurrency, ...g.overall })),
-        },
-        null,
-        2,
-      ),
+      `\n결과 폴더: ${output}\n회차별 표: report.html / trials.csv\n보조 통계: summary.csv / report.json\n원시 기록: samples.jsonl`,
     );
-    if (groups.some((g) => !g.overall.targetMet)) process.exitCode = 2;
+    if (groups.some((g) => !g.itemAverages.all.targetMet)) process.exitCode = 2;
   } finally {
     clearInterval(timer);
     fs.writeFileSync(
