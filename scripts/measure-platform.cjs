@@ -234,7 +234,13 @@ async function scenarios() {
       name: "학습된 모델 상세",
       route: "models/" + readyModel.id,
       conditions: [
-        { selector: "main h2", text: readyModel.name },
+        {
+          selector: "main h2",
+          text: readyModel.name
+            .replace(/\s*[·ㆍ]\s*/g, " ")
+            .replace(/\s+/g, " ")
+            .trim(),
+        },
         {
           selector: 'a[href="/ko/training/' + readyModel.id + '"]',
           visible: true,
@@ -296,7 +302,7 @@ async function scenarios() {
         { api: "/api/experiments/relabel-drift" },
         ...(experiment.comparisons?.length
           ? [
-              { selector: ".panel", text: "AI 재레이블링 · 재학습 비교" },
+              { selector: ".panel", text: "재학습 비교" },
               {
                 selector: ".panel table tbody tr",
                 min: experiment.comparisons.length,
