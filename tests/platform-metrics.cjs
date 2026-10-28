@@ -4,6 +4,8 @@ const http = require("node:http");
 const { chromium } = require("@playwright/test");
 const {
   summarize,
+  itemAverage,
+  trialTable,
   renderedReady,
 } = require("../scripts/performance/metrics.cjs");
 
@@ -108,4 +110,44 @@ test("render probe includes delayed DOM, below-fold image decode, and action res
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
   }
+});
+
+test("item averages retain equal weights and trial tables keep failures/missing rounds explicit", () => {
+  const scenarios = [
+    {
+      name: "화면 A",
+      type: "page",
+      samples: [
+        { round: 0, user: 0, ok: true, durationMs: 100 },
+        { round: 1, user: 0, ok: true, durationMs: 300 },
+      ],
+    },
+    {
+      name: "기능 B",
+      type: "function",
+      samples: [
+        { round: 0, user: 0, ok: true, durationMs: 1000 },
+        { round: 1, user: 0, ok: false },
+      ],
+    },
+  ].map((s) => ({ ...s, stats: summarize(s.samples, 2500) }));
+  const itemAverages = {
+    all: itemAverage(scenarios, 2500),
+    pages: itemAverage(scenarios, 2500, "page"),
+    functions: itemAverage(scenarios, 2500, "function"),
+  };
+  assert.equal(itemAverages.all.meanMs, 600); // (200 + 1000) / 2, not pooled 1400 / 3
+  assert.equal(itemAverages.all.complete, false);
+  assert.equal(itemAverages.all.targetMet, false);
+  assert.equal(itemAverages.pages.meanMs, 200);
+  const table = trialTable({ concurrency: 1, scenarios, itemAverages }, 3);
+  assert.equal(table.rows[0]["1회(초)"], "0.100");
+  assert.equal(table.rows[0]["2회(초)"], "0.300");
+  assert.equal(table.rows[0]["3회(초)"], "미측정");
+  assert.equal(table.rows[1]["2회(초)"], "실패");
+  assert.equal(table.rows.at(-1)["항목 평균(초)"], "0.600");
+  assert.equal(table.rows.at(-1).상태, "불완전 · 판정 불가");
+  const allFailed = [{ stats: summarize([{ ok: false }], 2500) }];
+  assert.equal(itemAverage(allFailed, 2500).meanMs, null);
+  assert.equal(itemAverage([], 2500).targetMet, false);
 });
