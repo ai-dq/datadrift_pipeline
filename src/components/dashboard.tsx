@@ -22,7 +22,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LabelEditor, type LabelSample } from "@/components/label-editor";
+import { displayName } from "@/lib/utils";
 import { RelabelReport } from "@/components/relabel-report";
+import { DriftResults, type DriftField } from "@/components/drift-results";
 
 type Dataset = {
   schema_id?: string;
@@ -104,18 +106,6 @@ type Run = {
     loss?: number;
     policy_changed?: boolean;
   };
-};
-type DriftField = {
-  reference_scored?: number;
-  current_scored?: number;
-  q_value?: number;
-  category_adjusted_js?: number;
-  category_adjusted_q?: number;
-  field: string;
-  js_divergence: number;
-  detected: boolean;
-  reference: Record<string, number>;
-  current: Record<string, number>;
 };
 type Sample = LabelSample;
 const names: Record<string, string> = {
@@ -500,7 +490,7 @@ export default function Dashboard({ path }: { path: string[] }) {
   const title =
     section === "workspaces"
       ? detail
-        ? workspace?.name || "워크스페이스"
+        ? displayName(workspace?.name) || "워크스페이스"
         : "워크스페이스"
       : section === "models"
         ? detail
@@ -515,18 +505,6 @@ export default function Dashboard({ path }: { path: string[] }) {
               : detail === "drift"
                 ? "드리프트 탐지"
                 : "학습 진행 상태";
-  const subtitle =
-    section === "workspaces"
-      ? "레이블이 있는 데이터로 속성추출 작업을 시작하세요."
-      : section === "reconstruction"
-        ? "원본 분할을 유지하며 학습 데이터셋을 새 버전으로 구성합니다."
-        : section === "training"
-          ? "데이터셋 버전을 선택하고 Qwen 모델의 LoRA 학습을 실행합니다."
-          : section === "evaluation"
-            ? "검증·테스트 데이터에서 실제 생성 결과와 속성별 일치도를 확인합니다."
-            : section === "models"
-              ? "기본 모델과 학습된 모델의 버전, 데이터 출처를 관리합니다."
-              : "실행 상태와 실제 계산 결과를 확인합니다.";
   const usableModels = models.filter(
     (m) =>
       m.status === "ready" &&
@@ -548,14 +526,13 @@ export default function Dashboard({ path }: { path: string[] }) {
     )
     .map((m) => (
       <option key={m.id} value={m.id} disabled={!m.available}>
-        {m.name}
+        {displayName(m.name)}
         {!m.available ? " (파일 없음)" : ""}
       </option>
     ));
   const datasetOptions = datasets.map((d) => (
     <option key={d.id} value={d.id}>
-      {d.name} · {num(d.count)}개 ·{" "}
-      {d.schema_id && d.schema_id !== "visual-v1" ? "비케이브" : "기존 기준"}
+      {displayName(d.name)} ({num(d.count)}개)
     </option>
   ));
   const runKind =
@@ -703,13 +680,15 @@ export default function Dashboard({ path }: { path: string[] }) {
                         className="text-button"
                         onClick={() => setSelectedRun(j.id)}
                       >
-                        {j.request.kind === "labeling" ? "AI 레이블 · " : ""}
+                        {j.request.kind === "labeling" ? "레이블링 " : ""}
                         {j.id.slice(0, 8)}
                       </button>
                     </td>
                     <td>
-                      {datasets.find((d) => d.id === j.request.dataset_id)
-                        ?.name || j.request.dataset_id}
+                      {displayName(
+                        datasets.find((d) => d.id === j.request.dataset_id)
+                          ?.name,
+                      ) || j.request.dataset_id}
                     </td>
                     <td>{date(j.created_at)}</td>
                     <td>
@@ -731,13 +710,32 @@ export default function Dashboard({ path }: { path: string[] }) {
           <div>
             <strong>실행 {activeRun.id.slice(0, 8)}</strong>{" "}
             <Badge status={activeRun.status} />
-            <p className="muted">
-              {activeRun.request.kind === "labeling"
-                ? "Gemma-4-12B · AI 재레이블링"
-                : models.find((m) => m.id === activeRun.request.model_id)
-                    ?.name}{" "}
-              · {date(activeRun.created_at)}
-            </p>
+            <div className="run-meta">
+              {activeRun.request.kind === "drift" ? (
+                <span>
+                  {displayName(
+                    datasets.find(
+                      (d) => d.id === activeRun.request.reference_id,
+                    )?.name,
+                  )}{" "}
+                  →{" "}
+                  {displayName(
+                    datasets.find((d) => d.id === activeRun.request.dataset_id)
+                      ?.name,
+                  )}
+                </span>
+              ) : (
+                <span>
+                  {activeRun.request.kind === "labeling"
+                    ? "AI 재레이블링"
+                    : displayName(
+                        models.find((m) => m.id === activeRun.request.model_id)
+                          ?.name,
+                      )}
+                </span>
+              )}
+              <time>{date(activeRun.created_at)}</time>
+            </div>
           </div>
           {["queued", "running"].includes(activeRun.status) && (
             <button
@@ -783,38 +781,42 @@ export default function Dashboard({ path }: { path: string[] }) {
             </div>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <span className="live-dot" /> 속성추출 전용<span>v0.2</span>
-        </div>
       </aside>
       <div className="main-shell">
         <header className="topbar">
           <span>프로젝트</span>
           <ChevronRight size={14} />
           <strong>데이터 드리프트</strong>
-          <div className="top-right">
-            <span className="live-dot" />{" "}
-            {error ? "연결 확인 필요" : "서비스 연결됨"}
-          </div>
         </header>
         <main>
           <div className="page-heading">
             <div>
-              <div className="eyebrow">
-                DATA DRIFT / {section.toUpperCase()}
-              </div>
               <h1>{title}</h1>
-              <p>{subtitle}</p>
             </div>
-            <button
-              className="button secondary"
-              aria-label="새로고침"
-              onClick={() => act(async () => {}, "새로고침했습니다.")}
-              disabled={busy}
-            >
-              <RefreshCw size={16} />
-              새로고침
-            </button>
+            <div className="page-actions">
+              {section === "workspaces" && detail && workspace && (
+                <button
+                  className="button secondary"
+                  onClick={() => {
+                    setEditWorkspaceId(workspace.id);
+                    setName(workspace.name);
+                    setDescription(workspace.description);
+                    setNewWorkspace(true);
+                  }}
+                >
+                  워크스페이스 수정
+                </button>
+              )}
+              <button
+                className="button secondary"
+                aria-label="새로고침"
+                onClick={() => act(async () => {}, "새로고침했습니다.")}
+                disabled={busy}
+              >
+                <RefreshCw size={16} />
+                새로고침
+              </button>
+            </div>
           </div>
           {error && (
             <div role="alert" className="alert error">
@@ -847,14 +849,9 @@ export default function Dashboard({ path }: { path: string[] }) {
                           .filter((d) => d.kind === "import")
                           .reduce((n, d) => n + d.count, 0),
                       )}
-                      sub="중복 재구성 버전 제외"
                     />
                     <Stat label="데이터셋 버전" value={datasets.length} />
-                    <Stat
-                      label="작업 유형"
-                      value="속성추출"
-                      sub="AI 레이블 출처 보존"
-                    />
+                    <Stat label="작업 유형" value="속성추출" />
                   </div>
                   <div className="toolbar">
                     <div className="search">
@@ -907,8 +904,10 @@ export default function Dashboard({ path }: { path: string[] }) {
                             </div>
                             <ArrowUpRight size={18} />
                           </div>
-                          <h2>{w.name}</h2>
-                          <p>{w.description || "속성추출 데이터 작업 공간"}</p>
+                          <h2>{displayName(w.name)}</h2>
+                          <p>
+                            {displayName(w.description) || "속성추출 데이터"}
+                          </p>
                           <Badge>속성추출</Badge>
                           <div className="card-bottom">
                             <span>
@@ -942,20 +941,6 @@ export default function Dashboard({ path }: { path: string[] }) {
                     <ArrowLeft size={16} />
                     전체 워크스페이스
                   </Link>
-                  {workspace && (
-                    <button
-                      className="button secondary"
-                      style={{ marginLeft: 16 }}
-                      onClick={() => {
-                        setEditWorkspaceId(workspace.id);
-                        setName(workspace.name);
-                        setDescription(workspace.description);
-                        setNewWorkspace(true);
-                      }}
-                    >
-                      워크스페이스 수정
-                    </button>
-                  )}
                   {!workspace ? (
                     <Empty>워크스페이스를 찾을 수 없습니다.</Empty>
                   ) : (
@@ -989,38 +974,11 @@ export default function Dashboard({ path }: { path: string[] }) {
                         >
                           {workspaceDatasets.map((d) => (
                             <option key={d.id} value={d.id}>
-                              {d.name}
+                              {displayName(d.name)}
                             </option>
                           ))}
                         </select>
                         <div className="actions">
-                          <button
-                            className="button secondary"
-                            disabled={
-                              busy ||
-                              !currentDataset?.schema_id?.startsWith(
-                                "bkave-",
-                              ) ||
-                              runs.some(
-                                (r) =>
-                                  r.request.kind === "labeling" &&
-                                  r.request.dataset_id === currentDataset?.id &&
-                                  ["queued", "running"].includes(r.status),
-                              )
-                            }
-                            onClick={() =>
-                              act(async () => {
-                                const job = await api<Run>("/jobs", {
-                                  kind: "labeling",
-                                  dataset_id: currentDataset!.id,
-                                });
-                                setSelectedRun(job.id);
-                                router.push("/ko/monitoring/training");
-                              }, "AI 재레이블링을 접수했습니다. 원본은 유지됩니다.")
-                            }
-                          >
-                            AI 재레이블링
-                          </button>
                           <button
                             className="button"
                             disabled={
@@ -1032,22 +990,76 @@ export default function Dashboard({ path }: { path: string[] }) {
                           >
                             레이블 검토
                           </button>
-                          <Link
-                            className="button secondary"
-                            href="/ko/reconstruction"
+                          <details
+                            className="action-menu"
+                            onBlur={(e) => {
+                              if (
+                                !e.currentTarget.contains(
+                                  e.relatedTarget as Node | null,
+                                )
+                              )
+                                e.currentTarget.open = false;
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") {
+                                e.currentTarget.open = false;
+                                e.currentTarget
+                                  .querySelector("summary")
+                                  ?.focus();
+                              }
+                            }}
                           >
-                            <Layers size={16} />
-                            재구성
-                          </Link>
-                          {currentDataset && (
-                            <a
-                              className="button secondary"
-                              href={`/api/datasets/${currentDataset.id}/export`}
-                            >
-                              <Download size={16} />
-                              레이블 내보내기
-                            </a>
-                          )}
+                            <summary className="button secondary">
+                              데이터 작업
+                              <ChevronRight size={16} />
+                            </summary>
+                            <div className="action-menu-items">
+                              <button
+                                className="button secondary"
+                                disabled={
+                                  busy ||
+                                  !currentDataset?.schema_id?.startsWith(
+                                    "bkave-",
+                                  ) ||
+                                  runs.some(
+                                    (r) =>
+                                      r.request.kind === "labeling" &&
+                                      r.request.dataset_id ===
+                                        currentDataset?.id &&
+                                      ["queued", "running"].includes(r.status),
+                                  )
+                                }
+                                onClick={() =>
+                                  act(async () => {
+                                    const job = await api<Run>("/jobs", {
+                                      kind: "labeling",
+                                      dataset_id: currentDataset!.id,
+                                    });
+                                    setSelectedRun(job.id);
+                                    router.push("/ko/monitoring/training");
+                                  }, "AI 재레이블링을 접수했습니다. 원본은 유지됩니다.")
+                                }
+                              >
+                                AI 재레이블링
+                              </button>
+                              <Link
+                                className="button secondary"
+                                href="/ko/reconstruction"
+                              >
+                                <Layers size={16} />
+                                재구성
+                              </Link>
+                              {currentDataset && (
+                                <a
+                                  className="button secondary"
+                                  href={`/api/datasets/${currentDataset.id}/export`}
+                                >
+                                  <Download size={16} />
+                                  레이블 내보내기
+                                </a>
+                              )}
+                            </div>
+                          </details>
                         </div>
                       </div>
                       {currentDataset ? (
@@ -1079,7 +1091,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                               </button>
                             ))}
                             <span className="muted">
-                              {currentDataset.provenance} · 원본 분할 유지
+                              {displayName(currentDataset.provenance)}
                             </span>
                           </div>
                           <div className="toolbar">
@@ -1118,10 +1130,21 @@ export default function Dashboard({ path }: { path: string[] }) {
                                   <div>
                                     <strong>{r.product_id}</strong>
                                     <p>
-                                      {String(r.target.pattern)} ·{" "}
-                                      {String(r.target.fit)}
+                                      {r.target.pattern === "unknown"
+                                        ? "미확인"
+                                        : String(r.target.pattern)}{" "}
+                                      /{" "}
+                                      {r.target.fit === "unknown"
+                                        ? "미확인"
+                                        : String(r.target.fit)}
                                     </p>
-                                    <Badge>{r.split}</Badge>{" "}
+                                    <Badge>
+                                      {{
+                                        train: "학습",
+                                        validation: "검증",
+                                        test: "테스트",
+                                      }[r.split] || r.split}
+                                    </Badge>{" "}
                                     <Badge>
                                       {r.human_verified
                                         ? "사람 검증"
@@ -1196,7 +1219,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                       >
                         {workspaces.map((w) => (
                           <option key={w.id} value={w.id}>
-                            {w.name}
+                            {displayName(w.name)}
                           </option>
                         ))}
                       </Select>
@@ -1225,7 +1248,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                                 setPreview(null);
                               }}
                             />
-                            {d.name}
+                            {displayName(d.name)}
                             <small>학습 {num(d.splits.train)}</small>
                           </label>
                         ))}
@@ -1299,8 +1322,8 @@ export default function Dashboard({ path }: { path: string[] }) {
                   </Panel>
                   <Panel title="재구성 미리보기">
                     <div className="callout">
-                      검증·테스트 데이터는 원본 그대로 유지됩니다. 학습 데이터만
-                      지정한 수만큼 선별합니다.
+                      학습 데이터만 선별합니다. 검증 데이터와 테스트 데이터는
+                      유지됩니다.
                     </div>
                     {preview ? (
                       <>
@@ -1312,9 +1335,9 @@ export default function Dashboard({ path }: { path: string[] }) {
                           />
                           <Stat label="테스트" value={preview.splits.test} />
                         </div>
-                        <p>{preview.name}</p>
+                        <p>{displayName(preview.name)}</p>
                         <p className="muted">
-                          전체 {num(preview.count)}개 · 원본 버전{" "}
+                          전체 {num(preview.count)}개 / 원본 버전{" "}
                           {preview.parent_ids.length}개
                         </p>
                         <code className="hash">{preview.fingerprint}</code>
@@ -1368,9 +1391,9 @@ export default function Dashboard({ path }: { path: string[] }) {
                         <tbody>
                           {models
                             .filter((m) =>
-                              m.name
+                              displayName(m.name)
                                 .toLowerCase()
-                                .includes(search.toLowerCase()),
+                                .includes(displayName(search).toLowerCase()),
                             )
                             .map((m) => (
                               <tr key={m.id}>
@@ -1379,7 +1402,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                                     className="text-button"
                                     href={"/ko/models/" + m.id}
                                   >
-                                    {m.name}
+                                    {displayName(m.name)}
                                   </Link>
                                   <small className="block muted">
                                     {m.family}
@@ -1421,7 +1444,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                         모델 목록
                       </Link>
                       <div className="two-col">
-                        <Panel title={m.name}>
+                        <Panel title={displayName(m.name)}>
                           <div className="details">
                             <span>모델 계열</span>
                             <strong>{m.family}</strong>
@@ -1435,13 +1458,16 @@ export default function Dashboard({ path }: { path: string[] }) {
                             <Badge status={m.status} />
                             <span>데이터셋</span>
                             <strong>
-                              {datasets.find((d) => d.id === m.dataset_id)
-                                ?.name || "사전학습 모델"}
+                              {displayName(
+                                datasets.find((d) => d.id === m.dataset_id)
+                                  ?.name,
+                              ) || "사전학습 모델"}
                             </strong>
                             <span>원본 모델</span>
                             <strong>
-                              {models.find((x) => x.id === m.parent_id)?.name ||
-                                "—"}
+                              {displayName(
+                                models.find((x) => x.id === m.parent_id)?.name,
+                              ) || "—"}
                             </strong>
                             <span>학습 작업</span>
                             <strong>
@@ -1479,7 +1505,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                             <label className="field">
                               모델 이름
                               <Input
-                                placeholder={m.name}
+                                placeholder={displayName(m.name)}
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 maxLength={100}
@@ -1491,8 +1517,8 @@ export default function Dashboard({ path }: { path: string[] }) {
                           </form>
                           <hr />
                           <p className="muted">
-                            보관한 모델은 새 학습·평가의 선택 목록에서
-                            제외됩니다. 기존 결과는 보존됩니다.
+                            보관한 모델은 새 학습과 평가 목록에서 제외됩니다.
+                            기존 결과는 보존됩니다.
                           </p>
                           <button
                             className="button secondary"
@@ -1551,9 +1577,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                         {datasetOptions}
                       </Select>
                       <div className="callout">
-                        학습 분할 {num(currentDataset?.splits.train)}개만
-                        사용합니다. 검증·테스트 데이터는 학습에 포함하지
-                        않습니다.
+                        학습 데이터 {num(currentDataset?.splits.train)}개
                       </div>
                       <div className="form-grid">
                         <label className="field">
@@ -1610,14 +1634,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                       <span>모델 생성</span>
                       <strong>완료 시 새 버전 등록</strong>
                     </div>
-                    <div className="callout">
-                      소규모 연결 검증은 1~2스텝으로 시작하세요. 학습 스텝 수는
-                      전체 데이터 1회 학습과 다릅니다.
-                    </div>
-                    <p className="muted">
-                      동시에 등록한 GPU 작업은 순서대로 실행됩니다. 진행
-                      상태에서 손실값과 로그를 확인하고 취소할 수 있습니다.
-                    </p>
+                    <p className="muted">학습은 등록한 순서대로 실행됩니다.</p>
                   </Panel>
                 </div>
               )}
@@ -1698,7 +1715,7 @@ export default function Dashboard({ path }: { path: string[] }) {
                           sub={`JSON 파싱 실패 ${activeRun.result.parse_failures ?? 0}개 포함`}
                         />
                       </div>
-                      <div className="callout">{activeRun.result.note}</div>
+                      <p className="result-note">AI 레이블과의 일치도입니다.</p>
                       <Panel title="속성별 평가">
                         {Object.entries(activeRun.result.fields || {}).map(
                           ([key, value]) => (
@@ -1871,8 +1888,7 @@ export default function Dashboard({ path }: { path: string[] }) {
               )}
               {section === "monitoring" && detail === "drift" && (
                 <>
-                  <RelabelReport />
-                  <Panel title="분포 비교 실행">
+                  <Panel title="비교 설정">
                     <form
                       className="horizontal-form"
                       onSubmit={(e) => {
@@ -1920,98 +1936,25 @@ export default function Dashboard({ path }: { path: string[] }) {
                   </Panel>
                   {runHeader()}
                   {activeRun?.result && (
-                    <>
-                      <div className="stats">
-                        <Stat
-                          label="탐지 결과"
-                          value={
-                            activeRun.result.detected
-                              ? "차이 감지"
-                              : "임계값 미만"
-                          }
-                        />
-                        <Stat
-                          label="기준 / 비교"
-                          value={`${num(activeRun.result.reference_count)} / ${num(activeRun.result.current_count)}`}
-                        />
-                        <Stat
-                          label="이미지 색상 분포 JS"
-                          value={activeRun.result.image_histogram_js?.toFixed(
-                            4,
-                          )}
-                        />
-                        <Stat
-                          label="판정 임계값"
-                          value={activeRun.result.threshold}
-                        />
-                      </div>
-                      <div className="callout">
-                        {(activeRun.result.fields as DriftField[])?.some(
-                          (f) => f.q_value !== undefined,
-                        )
-                          ? "차이 감지는 JS 임계값 판정입니다. 각 속성을 누르면 유효 레이블 수·보정 q·카테고리 내 비교를 볼 수 있습니다. AI 레이블 오류와 제외율 차이가 영향을 줄 수 있으며 시간 경과에 따른 성능 저하를 확정하지 않습니다."
-                          : activeRun.result.note}
-                      </div>
-                      <Panel title="속성 분포 차이 · 항목을 눌러 상세 보기">
-                        {((activeRun.result.fields as DriftField[]) || []).map(
-                          (f) => (
-                            <details key={f.field}>
-                              <summary className="metric-row">
-                                <span>{names[f.field]}</span>
-                                <div className="bar">
-                                  <i
-                                    className={f.detected ? "warning" : ""}
-                                    style={{ width: pct(f.js_divergence) }}
-                                  />
-                                </div>
-                                <strong>{f.js_divergence.toFixed(4)}</strong>
-                                <Badge status={f.detected ? "failed" : "ready"}>
-                                  {f.detected ? "감지" : "임계값 미만"}
-                                </Badge>
-                              </summary>
-                              {f.q_value !== undefined && (
-                                <p className="muted">
-                                  유효 레이블 {f.reference_scored} /{" "}
-                                  {f.current_scored} · 보정 q=
-                                  {f.q_value.toFixed(3)}
-                                  {f.category_adjusted_js !== undefined &&
-                                    ` · 카테고리 내 JS ${f.category_adjusted_js.toFixed(4)} / q=${f.category_adjusted_q?.toFixed(3)}`}
-                                  {
-                                    " · 999회 순열 검정, 다중비교 보정. 시계열 성능 저하 판정은 아닙니다."
-                                  }
-                                </p>
-                              )}
-                              <div className="prediction">
-                                <pre>
-                                  기준{JSON.stringify(f.reference, null, 2)}
-                                </pre>
-                                <pre>
-                                  비교{JSON.stringify(f.current, null, 2)}
-                                </pre>
-                              </div>
-                            </details>
-                          ),
-                        )}
-                      </Panel>
-                      <Link className="button" href="/ko/reconstruction">
-                        데이터 재구성으로 이동
-                        <ChevronRight size={16} />
-                      </Link>
-                    </>
+                    <DriftResults
+                      fields={(activeRun.result.fields as DriftField[]) || []}
+                      threshold={activeRun.result.threshold}
+                      referenceCount={activeRun.result.reference_count}
+                      currentCount={activeRun.result.current_count}
+                      imageJs={activeRun.result.image_histogram_js}
+                      names={names}
+                    />
                   )}
                   {activeRun?.error && (
                     <div className="alert error">{activeRun.error}</div>
                   )}
                   {runList()}
+                  <RelabelReport />
                 </>
               )}
             </>
           )}
         </main>
-        <footer>
-          DataDrift · 속성추출 데이터 운영{" "}
-          <span>실제 데이터와 실행 기록 기반</span>
-        </footer>
       </div>
       {newWorkspace && (
         <div className="modal-backdrop">

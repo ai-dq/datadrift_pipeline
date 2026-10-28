@@ -1,7 +1,7 @@
 import "./globals.css";
 export const metadata = {
-  title: "DataDrift · 속성추출",
-  description: "DataOps · MLOps workspace",
+  title: "DataDrift",
+  description: "데이터와 모델 관리",
 };
 export default function RootLayout({
   children,

@@ -121,7 +121,13 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
       .locator(".check-row")
       .filter({
         hasText: new RegExp(
-          "^" + mus.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "학습 ",
+          "^" +
+            mus.name
+              .replace(/\s*[·ㆍ]\s*/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+            "학습 ",
         ),
       })
       .getByRole("checkbox")

@@ -1,5 +1,6 @@
 "use client";
 
+import { displayName } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -336,7 +337,7 @@ export function LabelEditor({
                 {sample.source === "gsshop"
                   ? "GS SHOP"
                   : sample.source === "musinsa"
-                    ? "무신사 · BKAVE"
+                    ? "무신사 (BKAVE)"
                     : sample.source}
               </span>
               <span className="label-pill">
@@ -400,24 +401,24 @@ export function LabelEditor({
               </p>
               <details>
                 <summary>레이블 출처와 수정 이력</summary>
-                <p>현재: {sample.label_source}</p>
+                <p>현재: {displayName(sample.label_source)}</p>
                 {sample.original_label_source && (
-                  <p>원본: {sample.original_label_source}</p>
+                  <p>원본: {displayName(sample.original_label_source)}</p>
                 )}
-                <p className="label-version">{dataset.name}</p>
+                <p className="label-version">{displayName(dataset.name)}</p>
                 {sample.label_history?.map((h, i) => (
                   <p key={i}>
                     {new Date(h.at).toLocaleString("ko-KR", {
                       timeZone: "Asia/Seoul",
                     })}{" "}
-                    · {h.note || "속성 수정"}
+                    / {displayName(h.note) || "속성 수정"}
                   </p>
                 ))}
               </details>
               {sample.ai_label && (
                 <details>
                   <summary>
-                    AI 판독 원문 ·{" "}
+                    AI 판독 원문:{" "}
                     {sample.ai_label.schema_valid
                       ? "허용값 검사 통과"
                       : "부적합 필드 제외"}
@@ -446,7 +447,7 @@ export function LabelEditor({
                 <h3>속성 레이블</h3>
                 <p>
                   {isBkave
-                    ? `${sample.category} · ${taxonomy?.name || "비케이브"} 엑셀 기준`
+                    ? `${sample.category} / ${taxonomy?.name || "비케이브"} 기준`
                     : "이미지와 비교하며 값을 수정하세요."}
                 </p>
               </div>
@@ -455,11 +456,14 @@ export function LabelEditor({
               </span>
             </div>
             {isBkave && (
-              <div className="callout">
-                엑셀의 카테고리별 허용값입니다. 변환 과정에서 제외된 속성은 직접
-                검토한 뒤 제외 설정을 해제하세요. 생산처·세부 색상 코드는 근거가
-                있을 때만 입력하세요.
-              </div>
+              <details className="help-details">
+                <summary>입력 기준</summary>
+                <p>
+                  비케이브의 카테고리별 허용값을 사용합니다. 제외된 속성은 검토
+                  후 제외 설정을 해제하세요. 생산처와 색상 코드는 근거가 있을 때
+                  입력하세요.
+                </p>
+              </details>
             )}
             {error && (
               <div className="alert error" role="alert">
@@ -495,7 +499,7 @@ export function LabelEditor({
                           {(schema?.[field] || []).map((v) => (
                             <option key={v} value={v}>
                               {field === "color_code" && v !== "unknown"
-                                ? `${v} · ${taxonomy?.colors.find((c) => c.code === v)?.name || v} (${taxonomy?.colors.find((c) => c.code === v)?.group || ""})`
+                                ? `${v} ${taxonomy?.colors.find((c) => c.code === v)?.name || v} (${taxonomy?.colors.find((c) => c.code === v)?.group || ""})`
                                 : display(v)}
                             </option>
                           ))}
@@ -513,7 +517,7 @@ export function LabelEditor({
                               setVerified(false);
                             }}
                           />
-                          학습·평가 제외{" "}
+                          학습 및 평가 제외{" "}
                           <span className="sr-only">{title}</span>
                         </label>
                       </div>
@@ -524,7 +528,7 @@ export function LabelEditor({
               <section className="label-section">
                 <h4>
                   {isBkave ? "디자인 디테일" : "디테일"}{" "}
-                  <span>복수 선택 · 선택하지 않으면 없음</span>
+                  <span>여러 항목 선택 가능</span>
                 </h4>
                 <div className="label-chips">
                   {(schema?.details || []).map((value) => {
@@ -568,7 +572,7 @@ export function LabelEditor({
                       setVerified(false);
                     }}
                   />
-                  학습·평가 제외 <span className="sr-only">디테일</span>
+                  학습 및 평가 제외 <span className="sr-only">디테일</span>
                 </label>
               </section>
               <section className="label-section">

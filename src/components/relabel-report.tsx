@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { displayName } from "@/lib/utils";
+import { CardContent } from "@/components/ui/card";
 
 type Report = {
   status: string;
@@ -58,63 +59,43 @@ export function RelabelReport() {
   }, []);
   if (!report || report.status === "not_started") return null;
   return (
-    <Card className="panel">
-      <div className="panel-heading">
-        <h2>AI 재레이블링 · 재학습 비교</h2>
-        <span>
+    <details className="panel secondary-report" data-testid="relabel-report">
+      <summary className="panel-heading">
+        <h2>재학습 비교</h2>
+        <span className="muted">
           {report.status === "succeeded"
             ? "완료"
             : report.status === "failed"
               ? "실패"
-              : "실행 중"}
+              : "진행 중"}
         </span>
-      </div>
+      </summary>
       <CardContent>
-        <p className="muted">
-          Gemma-4-12B로 두 출처를 같은 기준에서 판독합니다. 기존 모델과 재학습
-          모델은 동일 검증 이미지 64개(출처별 32개)로 비교합니다.
-        </p>
         {report.active_job && (
           <p>
             현재 작업:{" "}
-            {jobNames[report.active_job.key] || report.active_job.key} ·{" "}
+            {jobNames[report.active_job.key] || report.active_job.key}:{" "}
             {report.active_job.progress.step || 0} /{" "}
             {report.active_job.progress.total || "—"}
           </p>
         )}
         {report.labeling && (
-          <p>
-            이미지 {report.labeling.count.toLocaleString()}개 재판독 · JSON 오류{" "}
-            {report.labeling.parse_failures}개 · 원문 허용값 위반{" "}
-            {report.labeling.schema_failures}개. 부적합 필드는 제외하고 원문을
-            보존합니다.
-          </p>
+          <dl className="analysis-facts">
+            <div>
+              <dt>재레이블링</dt>
+              <dd>{report.labeling.count.toLocaleString()}개</dd>
+            </div>
+            <div>
+              <dt>응답 형식 오류</dt>
+              <dd>{report.labeling.parse_failures}개</dd>
+            </div>
+            <div>
+              <dt>허용값 위반</dt>
+              <dd>{report.labeling.schema_failures}개</dd>
+            </div>
+          </dl>
         )}
         {report.error && <p className="error-text">{report.error}</p>}
-        {report.assessment && (
-          <div className="callout">
-            <p>
-              출처 간 분포 차이 후보:{" "}
-              {report.assessment.raw_candidate_names.join(", ") ||
-                "기준 초과 없음"}
-            </p>
-            <p>
-              카테고리 구성을 보정한 뒤에도 남은 후보:{" "}
-              {report.assessment.within_category_candidate_names.join(", ") ||
-                "기준 초과 없음"}
-            </p>
-            <p>
-              기준: JS ≥ 0.1 및 보정 q &lt; 0.05. 같은 출처를 나눈 대조군의 후보
-              수: 무신사{" "}
-              {report.assessment.same_source_control_candidates.musinsa
-                ?.length || 0}
-              개, GS SHOP{" "}
-              {report.assessment.same_source_control_candidates.gsshop
-                ?.length || 0}
-              개.
-            </p>
-          </div>
-        )}
         {!!report.comparisons?.length && (
           <div className="table-wrap">
             <table>
@@ -131,7 +112,9 @@ export function RelabelReport() {
                 {report.comparisons.map((r) => (
                   <tr key={r.key}>
                     <td>
-                      <Link href={"/ko/models/" + r.model_id}>{r.name}</Link>
+                      <Link href={"/ko/models/" + r.model_id}>
+                        {displayName(r.name)}
+                      </Link>
                     </td>
                     <td>{percent(r.macro_attribute_accuracy)}</td>
                     <td>
@@ -149,11 +132,43 @@ export function RelabelReport() {
             </table>
           </div>
         )}
-        <p className="muted">
-          {report.note ||
-            "AI 교사와의 일치도입니다. 출처 차이와 레이블 수정 효과를 살피는 실험이며, 실제 시간 경과에 따른 성능 저하를 확정하지 않습니다."}
+        <p className="result-note">
+          AI 레이블 기준의 일치도입니다. 사람 검증 정확도와는 다릅니다.
         </p>
+        <details className="help-details">
+          <summary>실험 조건과 보정 결과</summary>
+          <p>
+            Gemma-4-12B로 재레이블링한 뒤 같은 검증 이미지로 모델을
+            비교했습니다. 재레이블링 중 허용값을 벗어난 속성은 정답에서
+            제외했습니다.
+          </p>
+          {report.assessment && (
+            <div className="experiment-notes">
+              <p>
+                출처 간 분포 차이 후보:{" "}
+                {report.assessment.raw_candidate_names.join(", ") ||
+                  "기준 초과 없음"}
+              </p>
+              <p>
+                카테고리 보정 후 후보:{" "}
+                {report.assessment.within_category_candidate_names.join(", ") ||
+                  "기준 초과 없음"}
+              </p>
+              <p>
+                기준: JS ≥ 0.1 및 보정 q &lt; 0.05. 같은 출처를 나눈 대조군의
+                후보 수: 무신사{" "}
+                {report.assessment.same_source_control_candidates.musinsa
+                  ?.length || 0}
+                개, GS SHOP{" "}
+                {report.assessment.same_source_control_candidates.gsshop
+                  ?.length || 0}
+                개.
+              </p>
+            </div>
+          )}
+          {report.note && <p>{displayName(report.note)}</p>}
+        </details>
       </CardContent>
-    </Card>
+    </details>
   );
 }

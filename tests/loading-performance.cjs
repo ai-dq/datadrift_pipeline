@@ -75,7 +75,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
     await expect(page.locator(".run-head")).toContainText(drift.id.slice(0, 8));
     await expect(
       page.getByRole("heading", {
-        name: "속성 분포 차이 · 항목을 눌러 상세 보기",
+        name: "속성별 분포",
         exact: true,
       }),
     ).toBeVisible();
