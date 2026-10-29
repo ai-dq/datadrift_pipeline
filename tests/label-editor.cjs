@@ -37,7 +37,7 @@ const report = { datasets: [], checks: [], errors: [] };
     ).json();
     const original = originals.items[0];
     await page.goto(`${base}/ko/workspaces/${workspace.id}`);
-    await page.locator(".sample-card").first().click();
+    await page.locator(".sample-review").first().click();
     const dialog = page.getByRole("dialog", { name: "레이블 상세" });
     await expect(dialog.getByLabel("패턴", { exact: true })).toBeEnabled();
     await page.waitForFunction(() => {
@@ -58,9 +58,6 @@ const report = { datasets: [], checks: [], errors: [] };
     await dialog
       .getByLabel("검토 메모", { exact: false })
       .fill("브라우저 저장·재조회 검증용 임시 수정");
-    await dialog
-      .getByRole("checkbox", { name: /전체 속성을 직접 검토/ })
-      .check();
     await page.keyboard.press("Escape");
     await expect(dialog.locator(".label-discard")).toBeVisible();
     await dialog
@@ -71,9 +68,7 @@ const report = { datasets: [], checks: [], errors: [] };
         r.url().endsWith(`/samples/${original.id}/labels`) &&
         r.request().method() === "POST",
     );
-    await dialog
-      .getByRole("button", { name: "수정본 저장", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "저장", exact: true }).click();
     const response = await saving;
     assert.equal(response.status(), 201, await response.text());
     const saved = await response.json();
@@ -88,22 +83,23 @@ const report = { datasets: [], checks: [], errors: [] };
       pattern,
     );
     await expect(
-      dialog.getByRole("button", { name: "수정본 저장", exact: true }),
+      dialog.getByRole("button", { name: "저장", exact: true }),
     ).toBeDisabled();
     await dialog
       .getByRole("button", { name: "상세 닫기", exact: true })
       .click();
     await page.reload();
-    await expect(page.getByLabel("데이터셋 버전")).toHaveValue(
+    await expect(page.locator(".dataset-current")).toHaveAttribute(
+      "data-dataset-id",
       saved.dataset.id,
     );
-    await page.locator(".sample-card").first().click();
+    await page.locator(".sample-review").first().click();
     await expect(dialog.getByLabel("패턴", { exact: true })).toHaveValue(
       pattern,
     );
     await expect(
       dialog.getByRole("checkbox", { name: /전체 속성을 직접 검토/ }),
-    ).toBeChecked();
+    ).toHaveCount(0);
     const unchanged = await (
       await page.request.get(`${base}/api/datasets/${dataset.id}/samples`)
     ).json();
@@ -114,13 +110,15 @@ const report = { datasets: [], checks: [], errors: [] };
     await dialog
       .getByRole("button", { name: "다음 이미지", exact: true })
       .click();
-    await expect(dialog.locator(".label-title p")).toHaveText(
+    await expect(dialog.locator(".label-image-stage img")).toHaveAttribute(
+      "alt",
       originals.items[1].product_id,
     );
     await dialog
       .getByRole("button", { name: "이전 이미지", exact: true })
       .click();
-    await expect(dialog.locator(".label-title p")).toHaveText(
+    await expect(dialog.locator(".label-image-stage img")).toHaveAttribute(
+      "alt",
       original.product_id,
     );
     await dialog
@@ -128,13 +126,11 @@ const report = { datasets: [], checks: [], errors: [] };
       .selectOption(original.target.pattern);
     await expect(
       dialog.getByRole("checkbox", { name: /전체 속성을 직접 검토/ }),
-    ).not.toBeChecked();
+    ).toHaveCount(0);
     await page.route("**/samples/*/labels", (r) =>
       r.fulfill({ status: 500, json: { detail: "QA 저장 실패" } }),
     );
-    await dialog
-      .getByRole("button", { name: "수정본 저장", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "저장", exact: true }).click();
     await expect(dialog.locator(".alert.error")).toHaveText("QA 저장 실패");
     await expect(dialog.getByLabel("패턴", { exact: true })).toHaveValue(
       original.target.pattern,
@@ -145,7 +141,7 @@ const report = { datasets: [], checks: [], errors: [] };
     );
     await expect(
       dialog.getByRole("checkbox", { name: /전체 속성을 직접 검토/ }),
-    ).toBeChecked();
+    ).toHaveCount(0);
     await page.unroute("**/samples/*/labels");
     report.checks.push(
       "previous/next, editing resets review confirmation, failed save retains draft, reset",

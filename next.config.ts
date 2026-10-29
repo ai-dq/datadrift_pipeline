@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   output: "standalone",
+  experimental: { proxyTimeout: 180000 },
   async rewrites() {
     return [
       {

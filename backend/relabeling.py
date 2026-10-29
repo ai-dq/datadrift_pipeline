@@ -1,4 +1,4 @@
-"""Image-only BKAVE pseudo labels from a frozen, independent local teacher.
+"""Image-only labels in the source schema from a frozen, independent local teacher.
 
 Old targets are never supplied to the teacher. Raw generations and rejected values
 are retained; unknown/invalid/nonvisual fields are excluded from training/scoring.
@@ -12,7 +12,7 @@ from collections import Counter
 from pathlib import Path
 
 from . import taxonomy as t
-from .training import parse, sha, write
+from .training import PROMPT as LEGACY_PROMPT, parse, sha, write
 
 TEACHER = Path("/data/hslim/models/gemma-4-12B-it")
 POLICY = "bkave-image-teacher-v1"
@@ -29,7 +29,11 @@ PROMPT = (
 )
 
 
-def prompt(row):
+def prompt(row, schema_id=t.CURRENT):
+    if schema_id == t.LEGACY:
+        return LEGACY_PROMPT
+    if t.category(row.get("category")) not in t.CATEGORIES:
+        return t.automatic_category_prompt(PROMPT)
     allowed = t.schema(t.CURRENT, row["category"])
     allowed.update(origin=["unknown"], color_code=["unknown"])
     return (
@@ -41,16 +45,31 @@ def prompt(row):
     )
 
 
-def convert(row, raw, metadata):
+def convert(row, raw, metadata, schema_id=t.CURRENT):
     """Validate each field; never replace an invalid prediction with an old target."""
     text = raw.strip()
     if text.startswith("```json\n") and text.endswith("```"):
         text = text[8:-3].strip()
     pred = parse(text)
-    allowed = t.schema(t.CURRENT, row["category"])
+    legacy = schema_id == t.LEGACY
+    automatic_category = not legacy and t.category(row.get("category")) not in t.CATEGORIES
+    predicted_category = (pred or {}).get("category")
+    if legacy:
+        scope = row.get("category")
+    elif automatic_category:
+        scope = t.category(predicted_category) if isinstance(predicted_category, str) else None
+    else:
+        scope = t.category(row["category"])
+    category_valid = legacy or scope in t.CATEGORIES
+    scope = scope if category_valid else None
+    attributes = (
+        {k: v for k, v in pred.items() if k != "category"}
+        if automatic_category and isinstance(pred, dict) else pred
+    )
+    allowed = t.schema(schema_id, scope)
     target, excluded, rejected = {}, [], {}
     for key, values in allowed.items():
-        value = (pred or {}).get(key)
+        value = (attributes or {}).get(key)
         valid = (
             (
                 isinstance(value, list)
@@ -60,9 +79,11 @@ def convert(row, raw, metadata):
             if key == "details"
             else isinstance(value, str) and value in values
         )
+        if not category_valid:
+            valid = False
         if not valid:
             rejected[key] = value
-        if key in ("origin", "color_code"):
+        if not legacy and key in ("origin", "color_code"):
             target[key] = "unknown"
             excluded.append(key)
         elif values == ["not_applicable"]:
@@ -75,38 +96,45 @@ def convert(row, raw, metadata):
             target[key] = value
             if value == "unknown":
                 excluded.append(key)
+    if automatic_category and not category_valid:
+        rejected["category"] = (pred or {}).get("category")
+    model_name = metadata.get("model_name", "Gemma-4-12B")
     result = copy.deepcopy(row)
-    result.setdefault("original_label_source", row["label_source"])
+    result.setdefault("original_label_source", row.get("label_source", "미레이블"))
     result.setdefault("label_history", []).append(
         {
             "at": metadata["created_at"],
             "channel": "ai_relabel",
-            "note": "Gemma-4-12B 이미지 재판독 · 사람 검토 전",
+            "note": model_name + " 자동 레이블링, 사람 검토 전",
             "before": {
                 "target": row["target"],
                 "unscored_fields": row.get("unscored_fields", []),
-                "label_source": row["label_source"],
+                "label_source": row.get("label_source", "미레이블"),
             },
             "teacher": metadata,
         }
     )
     result.update(
+        category=scope,
         target=target,
         unscored_fields=excluded,
-        schema_id=t.CURRENT,
+        schema_id=schema_id,
         human_verified=False,
         reviewed_at=None,
-        label_source="Gemma-4-12B · 비케이브 이미지 재레이블링",
+        label_source=model_name + " 자동 레이블링",
+        label_state="labeled" if len(excluded) < len(allowed) else "unlabeled",
         ai_label={
             "raw": raw,
             "parsed": pred,
             "rejected_fields": rejected,
-            "schema_valid": t.valid(pred, t.CURRENT, row["category"]),
+            "category_inferred": automatic_category,
+            "category_valid": category_valid,
+            "schema_valid": category_valid and t.valid(attributes, schema_id, scope),
             **metadata,
         },
     )
     result.pop("migration_pending", None)
-    assert t.valid(target, t.CURRENT, row["category"])
+    assert t.valid(target, schema_id, scope)
     return result
 
 
@@ -118,20 +146,24 @@ def main(path):
     payload = json.loads(Path(path).read_text())
     out = Path(payload["output"])
     rows = payload["rows"]
+    schema_id = payload.get("schema_id", t.CURRENT)
+    fields = list(t.schema(schema_id))
+    max_new_tokens = 384 if schema_id == t.CURRENT else 512
     torch.set_num_threads(4)
     torch.manual_seed(42)
     started = time.monotonic()
     metadata = {
         "model": str(TEACHER),
-        "policy": POLICY,
+        "policy": POLICY if schema_id == t.CURRENT else "visual-image-teacher-v1",
+        "schema_id": schema_id,
         "created_at": payload["created_at"],
-        "prompt_sha256": hashlib.sha256(PROMPT.encode()).hexdigest(),
-        "taxonomy_sha256": t.BOOK["source_sha256"],
+        "prompt_sha256": hashlib.sha256((PROMPT if schema_id == t.CURRENT else LEGACY_PROMPT).encode()).hexdigest(),
+        "taxonomy_sha256": t.BOOK["source_sha256"] if schema_id == t.CURRENT else hashlib.sha256(json.dumps(t.LEGACY_SCHEMA, sort_keys=True).encode()).hexdigest(),
         "parent_dataset_id": payload["dataset_id"],
         "teacher_config_sha256": sha(TEACHER / "config.json"),
         "image_only": True,
         "temperature": 0,
-        "max_new_tokens": 384,
+        "max_new_tokens": max_new_tokens,
         "batch_size": 16,
         "image_max_edge": 768,
     }
@@ -174,7 +206,7 @@ def main(path):
                             "role": "user",
                             "content": [
                                 {"type": "image", "image": im},
-                                {"type": "text", "text": prompt(row)},
+                                {"type": "text", "text": prompt(row, schema_id)},
                             ],
                         }
                     ]
@@ -190,13 +222,13 @@ def main(path):
             ).to("cuda:0")
             with torch.inference_mode():
                 tokens = model.generate(
-                    **inputs, max_new_tokens=384, do_sample=False, use_cache=True
+                    **inputs, max_new_tokens=max_new_tokens, do_sample=False, use_cache=True
                 )
             for row, token in zip(batch, tokens):
                 raw = processor.tokenizer.decode(
                     token[inputs["input_ids"].shape[1] :], skip_special_tokens=True
                 )
-                item = convert(row, raw, metadata)
+                item = convert(row, raw, metadata, schema_id)
                 converted.append(item)
                 stream.write(
                     json.dumps(
@@ -225,7 +257,7 @@ def main(path):
                 Counter(
                     k
                     for r in converted
-                    for k in t.FIELDS
+                    for k in fields
                     if k not in r["unscored_fields"]
                 )
             ),

@@ -46,7 +46,7 @@ fs.mkdirSync(output, { recursive: true });
   }
   await page.goto("http://121.126.210.3:18091/ko/workspaces/musinsa");
   await page.locator(".sample-card").first().waitFor();
-  await page.locator(".sample-card").first().click();
+  await page.locator(".sample-review").first().click();
   await page.getByRole("dialog", { name: "레이블 상세" }).waitFor();
   await page.getByRole("button", { name: "상세 닫기" }).click();
   await page.goto("http://121.126.210.3:18091/ko/reconstruction");
@@ -57,7 +57,9 @@ fs.mkdirSync(output, { recursive: true });
   await page.getByRole("link", { name: "이 모델로 학습" }).click();
   await page.waitForURL("**/ko/training/qwen35_2b");
   results.push({
-    modelSelection: await page.getByLabel("시작 모델").inputValue(),
+    modelSelection: await page
+      .getByLabel("시작 모델")
+      .getAttribute("data-model-id"),
   });
   await page.getByLabel("학습 스텝").fill("1");
   const createdResponse = page.waitForResponse(

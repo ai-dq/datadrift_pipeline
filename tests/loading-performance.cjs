@@ -29,7 +29,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
         () =>
           !document.querySelector("main > .loading") &&
           document.querySelector(
-            "main .stats,main .panel,main .workspace-card",
+            "main .stats,main .panel,main .workspace-card,main .sample-page",
           ),
       );
       if (path.includes("gsshop")) {
@@ -97,10 +97,11 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
       );
     }
     // A single refresh click must not send two catalog refreshes.
-    const old = requests.filter((u) => u === "/api/datasets").length;
+    const catalogPath = "/api/datasets?current=true";
+    const old = requests.filter((u) => u === catalogPath).length;
     await page.getByRole("button", { name: "새로고침", exact: true }).click();
     await expect(page.getByRole("status")).toContainText("새로고침했습니다");
-    assert.equal(requests.filter((u) => u === "/api/datasets").length - old, 1);
+    assert.equal(requests.filter((u) => u === catalogPath).length - old, 1);
     // Returning from a hidden tab refreshes immediately, instead of waiting 30s.
     await page.goto(base + "/ko/evaluation");
     await page.locator(".loading").waitFor({ state: "hidden" });

@@ -61,6 +61,10 @@ def test_list_projection_matches_full_and_avoids_loading_rows(client, monkeypatc
     dataset = s.get("dataset", "d")
     expected = s.public_dataset(dataset)
     Path(dataset["rows"][0]["image"]).write_bytes(b"image fixture")
+    from backend import workspace_data as wd
+
+    with s.db() as con:
+        wd.point("w", "d", con)
     original_get, original_all = s.get, s.all_of
 
     def get(kind, *a, **kw):

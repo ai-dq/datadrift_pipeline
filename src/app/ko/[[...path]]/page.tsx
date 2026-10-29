@@ -11,6 +11,7 @@ export default async function Page({
     ![
       "workspaces",
       "models",
+      "model-api",
       "reconstruction",
       "training",
       "evaluation",

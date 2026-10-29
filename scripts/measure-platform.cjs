@@ -96,7 +96,7 @@ async function snapshot() {
       [
         "health",
         "workspaces",
-        "datasets",
+        "datasets?current=true",
         "models?summary=true",
         "jobs?summary=true",
         "experiments/relabel-drift",
@@ -138,12 +138,13 @@ async function scenarios() {
   const [workspaces, datasets, models, jobs, experiment] = await Promise.all(
     [
       "workspaces",
-      "datasets",
+      "datasets?current=true",
       "models?summary=true",
       "jobs",
       "experiments/relabel-drift",
     ].map(get),
   );
+  const endpoints = await get("model-endpoints");
   const training = jobs.find((j) =>
     ["training", "labeling"].includes(j.request.kind),
   );
@@ -203,8 +204,8 @@ async function scenarios() {
         { selector: ".sample-card", count: Math.min(d.count, 24) },
         { api: "/api/datasets/" + d.id + "/samples" },
         {
-          selector: 'select[aria-label="데이터셋 버전"] option',
-          count: datasets.filter((d) => d.workspace_id === ws).length,
+          selector: `.dataset-current[data-dataset-id="${d.id}"]`,
+          count: 1,
         },
       ],
     });
@@ -312,6 +313,25 @@ async function scenarios() {
       ],
     },
   );
+  defs.push({
+    id: "model-api",
+    name: "모델 API 관리",
+    route: "model-api",
+    conditions: [
+      {
+        selector: ".model-api > section:first-child tbody tr",
+        count: endpoints.length,
+      },
+      { api: "/api/model-endpoints" },
+      { api: "/api/models" },
+      ...(endpoints.length
+        ? [
+            { selector: ".api-content input[readonly]", visible: true },
+            { api: endpoints[0].path },
+          ]
+        : []),
+    ],
+  });
   for (const def of defs) {
     def.type = "page";
     def.conditions = [...common, ...def.conditions];

@@ -1,3 +1,4 @@
+const { selectDataset } = require("./dataset-selection.cjs");
 const { chromium, expect } = require("@playwright/test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -16,15 +17,25 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
   const checks = [];
   try {
     const datasets = await (
+      await page.request.get(base + "/api/datasets?current=true")
+    ).json();
+    const allSnapshots = await (
       await page.request.get(base + "/api/datasets")
     ).json();
-    const d = datasets.find(
+    const d = allSnapshots.find(
       (d) =>
         d.workspace_id === "gsshop" &&
         d.schema_id === book.id &&
         d.kind === "taxonomy_migration",
     );
     assert(d);
+    // Display the preserved workbook snapshot only inside this browser. The
+    // operational collection may use the original schema; never change it here.
+    await page.route("**/api/datasets?current=true", (route) =>
+      route.fulfill({
+        json: [...datasets.filter((item) => item.workspace_id !== "gsshop"), d],
+      }),
+    );
     const samples = {};
     for (let offset = 0; offset < d.count; offset += 100) {
       const batch = await (
@@ -35,7 +46,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
       for (const r of batch.items) samples[r.category] ||= r;
     }
     await page.goto(base + "/ko/workspaces/gsshop");
-    await page.getByLabel("데이터셋 버전").selectOption(d.id);
+    await selectDataset(page, d.id);
     for (const category of ["상의", "아우터", "하의"]) {
       const sample = samples[category];
       assert(sample);
@@ -43,12 +54,12 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
         .getByPlaceholder("상품 ID 또는 속성 검색")
         .fill(sample.product_id);
       await expect(page.locator(".sample-card")).toHaveCount(1);
-      await page.locator(".sample-card").click();
+      await page.locator(".sample-review").click();
       const dialog = page.getByRole("dialog", { name: "레이블 상세" });
       await expect(dialog.getByLabel("핏", { exact: true })).toBeEnabled();
-      await expect(dialog.locator(".label-fields-heading")).toContainText(
-        category,
-      );
+      await expect(
+        dialog.getByRole("heading", { name: "속성 레이블", exact: true }),
+      ).toBeVisible();
       const fits = await dialog
         .getByLabel("핏", { exact: true })
         .locator("option")
@@ -74,9 +85,9 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
       await expect(dialog.getByLabel("생산처", { exact: true })).toHaveValue(
         "unknown",
       );
-      await expect(
-        dialog.getByRole("button", { name: "수정본 저장", exact: true }),
-      ).toBeDisabled();
+      const save = dialog.getByRole("button", { name: "저장", exact: true });
+      if (sample.human_verified) await expect(save).toBeDisabled();
+      else await expect(save).toBeEnabled();
       if (category === "상의")
         await dialog.screenshot({
           path: ".runtime/ui-verification/bkave-labels.png",
@@ -86,7 +97,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
         .click();
       checks.push(category + " values match workbook");
     }
-    const old = datasets.find(
+    const old = allSnapshots.find(
       (d) => d.workspace_id === "gsshop" && d.kind === "import",
     );
     const mixed = await page.request.post(
@@ -103,6 +114,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
     assert.equal(mixed.status(), 422);
     checks.push("mixed criteria rejected without saving");
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator(".action-menu > summary").click();
     await page
       .getByRole("button", { name: "레이블 검토", exact: true })
       .click();
@@ -110,6 +122,16 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
     await expect(dialog).toBeVisible();
     assert(await dialog.evaluate((el) => el.scrollWidth <= innerWidth));
     checks.push("mobile taxonomy editor without overflow");
+    assert.deepEqual(
+      await (
+        await page.request.get(base + "/api/datasets?current=true")
+      ).json(),
+      datasets,
+      "the operational collections must remain unchanged",
+    );
+    checks.push(
+      "historical workbook snapshot inspected without switching live data",
+    );
     assert.equal(errors.length, 0);
     fs.writeFileSync(
       ".runtime/ui-verification/taxonomy.json",

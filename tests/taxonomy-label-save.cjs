@@ -64,9 +64,7 @@ const report = { datasets: [], checks: [] };
     const response = page.waitForResponse(
       (r) => r.url().endsWith("/labels") && r.request().method() === "POST",
     );
-    await dialog
-      .getByRole("button", { name: "수정본 저장", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "저장", exact: true }).click();
     const r = await response;
     assert.equal(r.status(), 201, await r.text());
     const saved = await r.json();
@@ -75,14 +73,15 @@ const report = { datasets: [], checks: [] };
     assert.equal(saved.sample.target.fit, value);
     assert.equal(saved.sample.target.color_code, "BK");
     assert.equal(Object.keys(saved.sample.target).length, 9);
-    assert.equal(saved.sample.human_verified, false);
+    assert.equal(saved.sample.human_verified, true);
     assert(saved.sample.unscored_fields.includes("color_code"));
     await expect(dialog.getByLabel("핏", { exact: true })).toHaveValue(value);
     await dialog
       .getByRole("button", { name: "상세 닫기", exact: true })
       .click();
     await page.reload();
-    await expect(page.getByLabel("데이터셋 버전")).toHaveValue(
+    await expect(page.locator(".dataset-current")).toHaveAttribute(
+      "data-dataset-id",
       saved.dataset.id,
     );
     await page

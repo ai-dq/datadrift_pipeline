@@ -73,22 +73,23 @@ def test_labeling_job_validation_and_cancel(client, tmp_path, monkeypatch):
 
     monkeypatch.setattr(relabeling, "TEACHER", tmp_path)
     (tmp_path / "config.json").write_text("{}")
-    assert (
-        client.post(
-            "/api/jobs", json={"kind": "labeling", "dataset_id": "d"}
-        ).status_code
-        == 422
-    )
+    legacy = client.post("/api/jobs", json={"kind": "labeling", "dataset_id": "d"})
+    assert legacy.status_code == 201, legacy.text
+    client.post("/api/jobs/" + legacy.json()["id"] + "/cancel")
     dataset = s.get("dataset", "d")
     dataset.update(schema_id=t.CURRENT)
+    for row in dataset["rows"]:
+        row["category"] = "상의"
     s.save("dataset", dataset)
     assert (
         client.post(
             "/api/jobs",
             json={"kind": "labeling", "dataset_id": "d", "model_id": "qwen35_2b"},
         ).status_code
-        == 422
+        == 201
     )
+    selected = client.get("/api/jobs?kind=labeling").json()[0]
+    client.post("/api/jobs/" + selected["id"] + "/cancel")
     response = client.post("/api/jobs", json={"kind": "labeling", "dataset_id": "d"})
     assert response.status_code == 201
     job = response.json()
