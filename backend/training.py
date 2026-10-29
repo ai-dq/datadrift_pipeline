@@ -117,6 +117,7 @@ def metrics(rows, predictions, schema_id=taxonomy.LEGACY):
 
 
 def evaluation_rows(rows, limit, seed, sampling="random"):
+    limit = len(rows) if limit is None else limit
     shuffled = rows.copy()
     random.Random(seed).shuffle(shuffled)
     if sampling == "random":
@@ -157,7 +158,9 @@ def main(path):
         "step": 0,
         "total": req["max_steps"]
         if req["kind"] == "training"
-        else min(req["sample_limit"], len(payload["rows"])),
+        else len(payload["rows"])
+        if req["kind"] in ("labeling", "inference")
+        else min(req.get("sample_limit") or len(payload["rows"]), len(payload["rows"])),
         "history": [],
     }
 
@@ -245,7 +248,69 @@ def main(path):
     rng = random.Random(req["seed"])
     rows = payload["rows"].copy()
     rng.shuffle(rows)
-    if is_training:
+    if req["kind"] in ("labeling", "inference"):
+        from collections import Counter
+        from .relabeling import convert
+
+        metadata = {
+            "model": payload["base_model"],
+            "model_id": payload["model"]["id"],
+            "model_name": payload["model"]["name"],
+            "policy": "bkave-selected-model-v1" if schema_id == taxonomy.CURRENT else "visual-selected-model-v1",
+            "schema_id": schema_id,
+            "created_at": payload["created_at"],
+            "parent_dataset_id": payload["dataset_id"],
+            "prompt_sha256": hashlib.sha256(prompt_text.encode()).hexdigest(),
+            "taxonomy_sha256": taxonomy.BOOK["source_sha256"] if schema_id == taxonomy.CURRENT else hashlib.sha256(json.dumps(taxonomy.LEGACY_SCHEMA, sort_keys=True).encode()).hexdigest(),
+            "image_only": True,
+            "adapter_sha256": sha(
+                Path(payload["model"]["adapter"]) / "adapter_model.safetensors"
+            )
+            if payload["model"].get("adapter")
+            else None,
+        }
+        model.eval()
+        converted = []
+        # No target values are passed to encode; prediction depends on image/category only.
+        for i, row in enumerate(payload["rows"]):
+            report(
+                phase="inference" if req["kind"] == "inference" else "labeling", step=i
+            )
+            batch = encode(row).to("cuda:0")
+            with torch.inference_mode():
+                output = model.generate(
+                    **batch, max_new_tokens=512, do_sample=False, use_cache=True
+                )
+            raw = processor.tokenizer.decode(
+                output[0, batch["input_ids"].shape[1] :], skip_special_tokens=True
+            )
+            converted.append(convert(row, raw, metadata, schema_id))
+            report(phase="labeling", step=i + 1)
+            print(f"LABEL {i + 1}/{len(payload['rows'])}", flush=True)
+        write(out / "relabeled-rows.json", converted)
+        write(
+            out / "result.json",
+            {
+                "count": len(converted),
+                "teacher": metadata,
+                "schema_failures": sum(
+                    not row["ai_label"]["schema_valid"] for row in converted
+                ),
+                "parse_failures": sum(
+                    row["ai_label"]["parsed"] is None for row in converted
+                ),
+                "label_coverage": dict(
+                    Counter(
+                        key
+                        for row in converted
+                        for key in fields
+                        if key not in row["unscored_fields"]
+                    )
+                ),
+                "note": "선택한 모델의 자동 레이블이며 사람 검증 정답이 아닙니다.",
+            },
+        )
+    elif is_training:
         if any(r["split"] != "train" for r in rows):
             raise ValueError("Held-out sample in training input")
         model.config.use_cache = False
@@ -366,7 +431,7 @@ def main(path):
     else:
         rows = evaluation_rows(
             payload["rows"],
-            req["sample_limit"],
+            req.get("sample_limit"),
             req["seed"],
             req.get("sampling", "random"),
         )

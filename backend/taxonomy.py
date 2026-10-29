@@ -89,9 +89,24 @@ def prompt():
     )
 
 
+def automatic_category_prompt(base):
+    allowed = {scope: schema(CURRENT, scope) for scope in CATEGORIES}
+    for values in allowed.values():
+        values.update(origin=["unknown"], color_code=["unknown"])
+    return (
+        base
+        + "\n카테고리가 지정되지 않은 이미지입니다. 중심 상품의 카테고리를 아우터, 상의, 하의, ACC 중 판별하세요. "
+        + '결과 JSON에 "category" 키를 추가하고 판별한 카테고리의 속성 허용값만 사용하세요. '
+        + '판별할 수 없으면 category는 "unknown"으로 출력하세요. 카테고리별 허용값: '
+        + json.dumps(allowed, ensure_ascii=False)
+    )
+
+
 def row_prompt(base, row, schema_id):
     if schema_id == LEGACY:
         return base
+    if category(row.get("category")) not in CATEGORIES:
+        return automatic_category_prompt(base)
     values = schema(schema_id, row["category"])
     colors = "; ".join(c["code"] + "=" + c["name"] for c in BOOK["colors"])
     return (

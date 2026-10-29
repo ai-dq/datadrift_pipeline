@@ -1,3 +1,4 @@
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
 export const metadata = {
   title: "DataDrift",

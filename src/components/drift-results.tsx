@@ -28,6 +28,8 @@ export function DriftResults({
   currentCount,
   imageJs,
   names,
+  currentWorkspace,
+  referenceWorkspace,
 }: {
   fields: DriftField[];
   threshold?: number;
@@ -35,6 +37,8 @@ export function DriftResults({
   currentCount?: number;
   imageJs?: number;
   names: Record<string, string>;
+  currentWorkspace?: string;
+  referenceWorkspace?: string;
 }) {
   const sorted = [...fields].sort((a, b) => b.js_divergence - a.js_divergence);
   const detected = sorted.filter((field) => field.detected);
@@ -51,7 +55,10 @@ export function DriftResults({
       <Card className="panel drift-distributions">
         <div className="panel-heading">
           <h2>속성별 분포</h2>
-          <Link className="button secondary" href="/ko/reconstruction">
+          <Link
+            className="button secondary"
+            href={`/ko/reconstruction?sources=${encodeURIComponent([referenceWorkspace, currentWorkspace].filter(Boolean).join(","))}`}
+          >
             데이터 재구성
             <ChevronRight size={16} />
           </Link>
@@ -185,11 +192,18 @@ export function DriftResults({
                   <div className="distribution-detail">
                     <div className="drift-detail-heading">
                       <h3>{label(field.field)} 상세 비교</h3>
-                      <span>구성비 차이가 큰 순서</span>
+                      <span>
+                        유효 레이블: 기준{" "}
+                        {count(field.reference_scored ?? referenceTotal)} /{" "}
+                        {count(referenceCount)}개, 비교{" "}
+                        {count(field.current_scored ?? currentTotal)} /{" "}
+                        {count(currentCount)}개
+                      </span>
                     </div>
                     <p className="drift-distribution-note">
                       구성비는 각 데이터셋의 속성값 집계 합계 기준입니다. 복수
-                      선택 속성은 이미지 수와 집계 합계가 다를 수 있습니다.
+                      선택 속성은 선택한 값의 조합으로 집계합니다. 이미지 확인은
+                      현재 레이블 기준입니다.
                     </p>
                     {values.length ? (
                       <div className="table-wrap">
@@ -210,6 +224,7 @@ export function DriftResults({
                                 구성비
                               </th>
                               <th>차이 (%p)</th>
+                              {currentWorkspace && <th>이미지</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -253,6 +268,20 @@ export function DriftResults({
                                     {delta > 0 ? "+" : ""}
                                     {delta.toFixed(1)}
                                   </td>
+                                  {currentWorkspace && (
+                                    <td>
+                                      {field.current[value] ? (
+                                        <Link
+                                          className="text-button"
+                                          href={`/ko/workspaces/${currentWorkspace}?attribute=${encodeURIComponent(field.field)}&value=${encodeURIComponent(value)}`}
+                                        >
+                                          현재 이미지 확인
+                                        </Link>
+                                      ) : (
+                                        "—"
+                                      )}
+                                    </td>
+                                  )}
                                 </tr>
                               );
                             })}
@@ -309,8 +338,7 @@ export function DriftResults({
             </p>
             <p>
               두 데이터셋의 분포 차이이며 모델 성능 저하를 의미하지는 않습니다.
-              AI 레이블의 오류나 제외 비율이 결과에 영향을 줄 수 있습니다. 보정
-              q는 여러 속성을 함께 검정한 결과입니다.
+              보정 q는 여러 속성을 함께 검정한 결과입니다.
             </p>
           </details>
         </CardContent>

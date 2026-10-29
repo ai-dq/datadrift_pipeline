@@ -10,6 +10,7 @@ import sys
 import time
 from . import store as s
 from . import taxonomy
+from . import workspace_data as wd
 from .catalog import model_path
 from .drift import detect
 
@@ -28,8 +29,18 @@ def claim():
 def run(j):
     jid = j["id"]
     req = j["request"]
-    dataset = s.get("dataset", req["dataset_id"])
-    if dataset["fingerprint"] != j["dataset_fingerprint"]:
+    inference = req["kind"] == "inference"
+    dataset = (
+        {
+            "id": j["id"],
+            "rows": [j["input_row"]],
+            "schema_id": taxonomy.CURRENT,
+            "fingerprint": j["input_row"]["sha256"],
+        }
+        if inference
+        else s.get("dataset", req["dataset_id"])
+    )
+    if not inference and dataset["fingerprint"] != j["dataset_fingerprint"]:
         raise ValueError("Dataset snapshot changed")
     if req["kind"] == "drift":
         result = detect(
@@ -43,11 +54,13 @@ def run(j):
             s.patch("job", jid, status="succeeded", result=result, finished_at=s.now())
         return
     labeling = req["kind"] == "labeling"
-    model = {} if labeling else s.get("model", req["model_id"])
+    fixed_teacher = labeling and req.get("model_id") in (None, "gemma4_teacher")
+    model = {} if fixed_teacher else s.get("model", req["model_id"])
     rows = [
         r
         for r in dataset["rows"]
         if labeling
+        or inference
         or r["split"] == ("train" if req["kind"] == "training" else req["split"])
     ]
     folder = s.ROOT / "jobs" / jid
@@ -62,7 +75,7 @@ def run(j):
         "schema_id": dataset.get("schema_id", taxonomy.LEGACY),
         "request": req,
         "model": model,
-        "base_model": None if labeling else str(model_path(model["family"])),
+        "base_model": None if fixed_teacher else str(model_path(model["family"])),
         "rows": rows,
         "output": str(folder),
         "dataset_fingerprint": dataset["fingerprint"],
@@ -77,13 +90,28 @@ def run(j):
         TOKENIZERS_PARALLELISM="false",
     )
     process = None
+    process_started = time.monotonic()
+    s.patch(
+        "job",
+        jid,
+        progress={
+            "phase": "loading",
+            "step": 0,
+            "total": len(rows)
+            if labeling or inference
+            else req["max_steps"]
+            if req["kind"] == "training"
+            else min(req.get("sample_limit") or len(rows), len(rows)),
+            "elapsed_seconds": 0,
+        },
+    )
     try:
         with (folder / "process.log").open("w") as log:
             process = subprocess.Popen(
                 [
                     python,
                     "-m",
-                    "backend.relabeling" if labeling else "backend.training",
+                    "backend.relabeling" if fixed_teacher else "backend.training",
                     str(folder / "input.json"),
                 ],
                 stdout=log,
@@ -104,13 +132,17 @@ def run(j):
                 progress = folder / "progress.json"
                 if progress.exists():
                     try:
-                        s.patch("job", jid, progress=json.loads(progress.read_text()))
+                        value = json.loads(progress.read_text())
+                        value["elapsed_seconds"] = round(
+                            time.monotonic() - process_started, 2
+                        )
+                        s.patch("job", jid, progress=value)
                     except json.JSONDecodeError:
                         pass
                 time.sleep(1)
         if process.returncode:
             raise RuntimeError(
-                f"학습 프로세스 종료 코드 {process.returncode}. 실행 로그를 확인하세요."
+                f"모델 실행 프로세스 종료 코드 {process.returncode}. 실행 로그를 확인하세요."
             )
         result = json.loads((folder / "result.json").read_text())
         with s.db() as c:
@@ -119,6 +151,23 @@ def run(j):
             if latest["cancel_requested"]:
                 latest.update(status="cancelled", finished_at=s.now())
             else:
+                if inference:
+                    row = json.loads((folder / "relabeled-rows.json").read_text())[0]
+                    result = {
+                        "category": row.get("category"),
+                        "category_valid": row["ai_label"]["category_valid"],
+                        "attributes": row["target"],
+                        "excluded_attributes": row["unscored_fields"],
+                        "schema_valid": row["ai_label"]["schema_valid"],
+                        "parse_valid": row["ai_label"]["parsed"] is not None,
+                        "raw": row["ai_label"]["raw"],
+                        "model_id": model["id"],
+                        "schema_id": taxonomy.CURRENT,
+                        "processing_seconds": round(
+                            time.monotonic() - process_started, 2
+                        ),
+                        "teacher": result["teacher"],
+                    }
                 if labeling:
                     rows = json.loads((folder / "relabeled-rows.json").read_text())
                     if len(rows) != len(dataset["rows"]):
@@ -127,13 +176,16 @@ def run(j):
                     labeled = {
                         **dataset,
                         "id": did,
-                        "name": dataset["name"] + " · AI 재레이블",
+                        "name": dataset["name"] + " 자동 레이블",
                         "kind": "ai_relabel",
+                        "schema_id": dataset.get("schema_id", taxonomy.LEGACY),
                         "rows": rows,
                         "created_at": s.now(),
                         "parent_ids": [dataset["id"]],
                         "labeling_job_id": jid,
-                        "provenance": "Gemma-4-12B 이미지 재판독 · 사람 검토 전",
+                        "provenance": (model.get("name") or "Gemma-4-12B")
+                        + " 자동 레이블링, 사람 검토 전",
+                        "labeling_model_id": req.get("model_id") or "gemma4_teacher",
                         "fingerprint": hashlib.sha256(
                             json.dumps(
                                 rows, sort_keys=True, ensure_ascii=False
@@ -144,7 +196,14 @@ def run(j):
                     }
                     labeled.pop("annotation_base_name", None)
                     s.save("dataset", labeled, c)
-                    result["dataset_id"] = did
+                    active, applied = wd.apply_labels(dataset, labeled, c)
+                    result["dataset_id"] = active["id"] if active else did
+                    result["applied_count"] = applied
+                    result["skipped_changed_count"] = len(rows) - applied
+                    if active and applied == len(rows) == len(active["rows"]) and applied > 0 and all(row.get("label_state") != "unlabeled" for row in active["rows"]):
+                        workspace = s.get("workspace", dataset["workspace_id"], c)
+                        workspace["labeling_model_id"] = labeled["labeling_model_id"]
+                        s.save("workspace", workspace, c)
                 if req["kind"] == "training":
                     mid = "trained-" + jid
                     s.save(
@@ -172,7 +231,8 @@ def run(j):
                     status="succeeded",
                     finished_at=s.now(),
                     result=result,
-                    progress=json.loads((folder / "progress.json").read_text()),
+                    progress=json.loads((folder / "progress.json").read_text())
+                    | {"elapsed_seconds": round(time.monotonic() - process_started, 2)},
                 )
             s.save("job", latest, c)
     finally:

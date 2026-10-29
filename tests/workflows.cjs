@@ -1,3 +1,4 @@
+const { selectDataset } = require("./dataset-selection.cjs");
 const { chromium, expect } = require("@playwright/test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -43,13 +44,9 @@ fs.mkdirSync(folder, { recursive: true });
     return r.json();
   };
   try {
-    const datasets = await read("/datasets");
-    const mus = datasets.find(
-      (d) => d.workspace_id === "musinsa" && d.kind === "import",
-    );
-    const gs = datasets.find(
-      (d) => d.workspace_id === "gsshop" && d.kind === "import",
-    );
+    const datasets = await read("/datasets?current=true");
+    const mus = datasets.find((d) => d.workspace_id === "musinsa");
+    const gs = datasets.find((d) => d.workspace_id === "gsshop");
     await page.goto(base + "/ko/workspaces");
     await page
       .getByRole("button", { name: "워크스페이스 만들기", exact: true })
@@ -79,7 +76,7 @@ fs.mkdirSync(folder, { recursive: true });
     await expect(page.locator("h1")).toHaveText(qa + " 수정");
     report.checks.push("workspace create and edit");
     await page.goto(base + "/ko/workspaces/musinsa");
-    await page.getByLabel("데이터셋 버전").selectOption(mus.id);
+    await selectDataset(page, mus.id);
     await page.locator(".sample-card").first().waitFor();
     await page.waitForFunction(() =>
       Array.from(document.querySelectorAll(".sample-card img"))
@@ -127,9 +124,11 @@ fs.mkdirSync(folder, { recursive: true });
     ).toBeVisible();
     await page.goto(base + "/ko/training");
     await page.getByLabel("시작 모델").waitFor();
+    await page.getByLabel("시작 모델").click();
     await expect(
-      page.getByLabel("시작 모델").locator('option[value="' + mid + '"]'),
+      page.locator('[role="option"][data-model-id="' + mid + '"]'),
     ).toHaveCount(0);
+    await page.keyboard.press("Escape");
     await page.goto(base + "/ko/models/" + mid);
     await page
       .getByRole("button", { name: "사용 상태로 복원", exact: true })
@@ -140,12 +139,12 @@ fs.mkdirSync(folder, { recursive: true });
     report.checks.push("model rename, archive excludes selection, restore");
     await page.goto(base + "/ko/evaluation/" + mid);
     await page.getByLabel("데이터셋").selectOption(mus.id);
-    await page.getByLabel("최대 샘플 수").fill("2");
+    await page.getByLabel("평가 분할").selectOption("test");
     let e = await submit("평가 시작");
     e = await waitJob(e.id);
     report.evaluationId = e.id;
-    assert.equal(e.result.count, 2);
-    assert.equal(e.result.predictions.length, 2);
+    assert.equal(e.result.count, mus.splits.test);
+    assert.equal(e.result.predictions.length, mus.splits.test);
     report.checks.push(
       "browser evaluation of saved adapter and result persistence",
     );

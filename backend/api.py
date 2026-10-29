@@ -1,9 +1,9 @@
 import asyncio
 import hashlib
 import json
-import random
 import os
 import copy
+from collections import Counter
 from contextlib import asynccontextmanager
 from typing import Literal
 from pathlib import Path
@@ -13,6 +13,10 @@ from pydantic import BaseModel, Field, ConfigDict
 from . import store as s
 from .catalog import initialize, import_labeled, model_available
 from . import taxonomy
+from . import reconstruction as reconstruction_sampling
+from . import workspace_data as wd
+from .sample_view import public_sample
+from .model_endpoints import router as model_endpoints_router
 
 
 @asynccontextmanager
@@ -28,6 +32,9 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+
+
+app.include_router(model_endpoints_router)
 
 
 @app.exception_handler(KeyError)
@@ -67,6 +74,7 @@ class Strict(BaseModel):
 
 
 class Workspace(Strict):
+    labeling_model_id: str | None = None
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(default="", max_length=1000)
     task: Literal["attribute_extraction"] = "attribute_extraction"
@@ -78,20 +86,30 @@ class Rename(Strict):
 
 
 class LabelEdit(Strict):
+    category: Literal["아우터", "상의", "하의", "ACC"] | None = None
     target: dict[str, str | list[str]]
     unscored_fields: list[str] = Field(default_factory=list, max_length=14)
     human_verified: bool = False
     note: str = Field(default="", max_length=1000)
+    split: Literal["unassigned", "train", "validation", "test"] | None = None
+
+
+class SplitEdit(Strict):
+    sample_ids: list[str] = Field(min_length=1, max_length=100000)
+    split: Literal["unassigned", "train", "validation", "test"]
 
 
 class Reconstruction(Strict):
-    workspace_id: str
+    workspace_id: str | None = None
     name: str = Field(min_length=1, max_length=100)
     dataset_ids: list[str] = Field(min_length=1, max_length=8)
-    train_budget: int = Field(ge=1, le=100000)
+    data_count: int | None = Field(default=None, ge=1, le=100000)
+    train_budget: int | None = Field(default=None, ge=1, le=100000)
+    reference_id: str | None = None
+    dataset_weights: dict[str, float] = Field(default_factory=dict)
     seed: int = Field(default=42, ge=0, le=2147483647)
 
-    method: Literal["source_balanced", "random"] = "source_balanced"
+    method: Literal["balanced_mix", "merge", "source_balanced", "random", "distribution"] = "balanced_mix"
 
 
 class Job(Strict):
@@ -101,7 +119,7 @@ class Job(Strict):
     reference_id: str | None = None
     max_steps: int = Field(default=20, ge=1, le=10000)
     learning_rate: float = Field(default=2e-5, gt=0, le=0.01)
-    sample_limit: int = Field(default=8, ge=1, le=10000)
+    sample_limit: int | None = Field(default=None, ge=1, le=10000)
     split: Literal["validation", "test"] = "validation"
     threshold: float = Field(default=0.1, gt=0, le=1)
     seed: int = Field(default=42, ge=0, le=2147483647)
@@ -139,17 +157,28 @@ def relabel_experiment():
     return report
 
 
+def workspace_labeling_model(workspace, dataset=None):
+    return workspace.get("labeling_model_id", (dataset or {}).get("labeling_model_id"))
+
+
 @app.get("/api/workspaces")
 def workspaces():
-    ds = s.dataset_summaries()
-    return [
-        w | {"datasets": [d for d in ds if d["workspace_id"] == w["id"]]}
-        for w in s.all_of("workspace")
-    ]
+    ds = s.dataset_summaries(current_only=True)
+    names = {m["id"]: m["name"] for m in s.all_of("model")}
+    names["gemma4_teacher"] = "Gemma-4-12B"
+    result = []
+    for w in s.all_of("workspace"):
+        data = [d for d in ds if d["workspace_id"] == w["id"]]
+        mid = workspace_labeling_model(w, data[0] if data else None)
+        result.append(w | {"datasets": data, "labeling_model_id": mid,
+                           "labeling_model_name": names.get(mid, mid)})
+    return result
 
 
 @app.post("/api/workspaces", status_code=201)
 def create_workspace(body: Workspace):
+    if body.labeling_model_id:
+        selected_labeling_model(body.labeling_model_id)
     return s.save(
         "workspace", body.model_dump() | {"id": s.uid(), "created_at": s.now()}
     )
@@ -157,7 +186,45 @@ def create_workspace(body: Workspace):
 
 @app.patch("/api/workspaces/{wid}")
 def edit_workspace(wid: str, body: Workspace):
-    return s.patch("workspace", wid, **body.model_dump())
+    current = s.get("workspace", wid)
+    if body.labeling_model_id and body.labeling_model_id != current.get("labeling_model_id"):
+        selected_labeling_model(body.labeling_model_id)
+    return s.patch("workspace", wid, **body.model_dump(exclude_unset=True))
+
+
+class Deletion(Strict):
+    kind: Literal["workspace", "dataset", "samples"]
+    id: str
+    sample_ids: list[str] = Field(default_factory=list, max_length=1000)
+    token: str = ""
+
+
+@app.post("/api/deletions/preview")
+def deletion_preview(body: Deletion):
+    from . import deletions
+
+    return deletions.preview(body.kind, body.id, body.sample_ids)
+
+
+@app.post("/api/deletions", status_code=201)
+def delete_data(body: Deletion):
+    from . import deletions
+
+    return deletions.delete(body.kind, body.id, body.sample_ids, body.token)
+
+
+@app.get("/api/deletions")
+def deleted_data():
+    from . import deletions
+
+    return deletions.entries()
+
+
+@app.post("/api/deletions/{bid}/restore")
+def restore_data(bid: str):
+    from . import deletions
+
+    return deletions.restore(bid)
 
 
 @app.post("/api/imports/labeled")
@@ -165,12 +232,150 @@ def imports():
     from .migrate_taxonomy import migrate
 
     imported = import_labeled()
-    return migrate({d["id"] for d in imported})
+    migrated = migrate({d["id"] for d in imported})
+    with s.db() as con:
+        con.execute("BEGIN IMMEDIATE")
+        for dataset in migrated:
+            wid = dataset["workspace_id"]
+            if not con.execute(
+                "SELECT 1 FROM workspace_data WHERE workspace_id=?", (wid,)
+            ).fetchone():
+                s.get("workspace", wid, con)
+                wd.point(wid, dataset["id"], con)
+    return migrated
+
+
+@app.post(
+    "/api/workspaces/{wid}/images",
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["files"],
+                        "properties": {
+                            "files": {
+                                "type": "array",
+                                "items": {"type": "string", "format": "binary"},
+                            }
+                        },
+                    }
+                }
+            },
+        }
+    },
+)
+async def upload_images(
+    wid: str,
+    request: Request,
+    name: str = Query(min_length=1, max_length=100),
+    category: Literal["아우터", "상의", "하의", "ACC"] | None = None,
+    split: Literal["unassigned", "train", "validation", "test"] = "train",
+):
+    from starlette.formparsers import MultiPartParser, MultiPartException
+    from starlette.datastructures import UploadFile
+    from starlette.concurrency import run_in_threadpool
+    from .uploads import import_images, MAX_BATCH, MAX_FILES, MAX_IMAGE
+
+    s.get("workspace", wid)
+    name = name.strip()
+    if not name:
+        raise ValueError("데이터셋 이름을 입력하세요.")
+    if not request.headers.get("content-type", "").startswith("multipart/form-data"):
+        raise HTTPException(415, "이미지 파일을 multipart/form-data로 전송하세요.")
+
+    class SizeLimit(MultiPartException):
+        pass
+
+    async def limited_stream():
+        size = 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > MAX_BATCH + 1024 * 1024:
+                raise SizeLimit("한 번에 100MB까지 업로드할 수 있습니다.")
+            yield chunk
+
+    try:
+        form = await MultiPartParser(
+            request.headers,
+            limited_stream(),
+            max_files=MAX_FILES,
+            max_fields=0,
+            max_part_size=MAX_IMAGE,
+        ).parse()
+    except SizeLimit as exc:
+        raise HTTPException(413, exc.message) from exc
+    except MultiPartException as exc:
+        raise HTTPException(
+            422, "업로드 형식 또는 파일 수를 확인하세요. " + exc.message
+        ) from exc
+    try:
+        items = form.multi_items()
+        if any(
+            key != "files" or not isinstance(value, UploadFile) for key, value in items
+        ):
+            raise ValueError("files 항목에 이미지 파일을 첨부하세요.")
+        return await run_in_threadpool(
+            import_images, [v for _, v in items], wid, name, category, split
+        )
+    finally:
+        await form.close()
+
+
+def selected_labeling_model(model_id, schema_id=None):
+    if model_id in (None, "gemma4_teacher"):
+        from .relabeling import TEACHER
+
+        if not (TEACHER / "config.json").is_file():
+            raise ValueError("Gemma 레이블링 모델 파일이 없습니다.")
+        return None
+    m = s.get("model", model_id)
+    if m["status"] != "ready" or not model_available(m):
+        raise ValueError("사용 가능한 모델을 선택하세요.")
+    if m["kind"] == "lora" and schema_id is not None and m.get("schema_id", taxonomy.LEGACY) != schema_id:
+        raise ValueError("데이터와 같은 레이블 형식으로 학습한 모델을 선택하세요.")
+    return m
+
+
+@app.get("/api/labeling-models")
+def labeling_models(schema_id: str = taxonomy.CURRENT):
+    from .relabeling import TEACHER
+
+    taxonomy.schema(schema_id)
+    return [
+        m
+        for m in models(summary=True)
+        if m["kind"] == "base" or m.get("schema_id", taxonomy.LEGACY) == schema_id
+    ] + [
+        {
+            "id": "gemma4_teacher",
+            "name": "Gemma-4-12B",
+            "family": "gemma4",
+            "kind": "base",
+            "status": "ready",
+            "available": (TEACHER / "config.json").is_file(),
+        }
+    ]
+
+
+def require_labels(dataset):
+    count = sum(row.get("label_state") == "unlabeled" for row in dataset["rows"])
+    if count:
+        raise ValueError(
+            f"미레이블 이미지가 {count}개 있습니다. 자동 레이블링 또는 수동 검토를 먼저 완료하세요."
+        )
 
 
 @app.get("/api/datasets")
-def datasets(workspace_id: str | None = None):
-    return s.dataset_summaries(workspace_id=workspace_id)
+def datasets(workspace_id: str | None = None, current: bool = False):
+    values = s.dataset_summaries(workspace_id=workspace_id, current_only=current)
+    if current:
+        names = {w["id"]: w["name"] for w in s.all_of("workspace")}
+        return [d | {"name": names.get(d["workspace_id"], d["name"])} for d in values]
+    return values
 
 
 @app.get("/api/datasets/{did}")
@@ -184,9 +389,13 @@ def dataset(did: str):
 @app.get("/api/datasets/{did}/samples")
 def samples(
     did: str,
-    split: Literal["train", "validation", "test"] | None = None,
+    ids_only: bool = False,
+    split: Literal["unassigned", "train", "validation", "test"] | None = None,
     source: str | None = None,
     q: str = "",
+    review: Literal["unlabeled", "pending", "verified"] | None = None,
+    attribute: str | None = None,
+    value: str | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(24, ge=1, le=100),
 ):
@@ -196,6 +405,37 @@ def samples(
         if (split is None or r["split"] == split)
         and (source is None or r["source"] == source)
         and (
+            review is None
+            or (review == "unlabeled" and r.get("label_state") == "unlabeled")
+            or (
+                review == "verified"
+                and r.get("human_verified")
+                and r.get("label_state") != "unlabeled"
+            )
+            or (
+                review == "pending"
+                and not r.get("human_verified")
+                and r.get("label_state") != "unlabeled"
+            )
+        )
+        and (
+            attribute is None
+            or (
+                attribute not in r.get("unscored_fields", [])
+                and r["target"].get(attribute)
+                not in (None, "unknown", "not_applicable")
+                and (
+                    value is None
+                    or str(
+                        sorted(r["target"][attribute])
+                        if isinstance(r["target"][attribute], list)
+                        else r["target"][attribute]
+                    )
+                    == value
+                )
+            )
+        )
+        and (
             not q
             or q.lower()
             in json.dumps(
@@ -203,13 +443,23 @@ def samples(
             ).lower()
         )
     ]
+    if ids_only:
+        return {"total": len(rows), "ids": [r["id"] for r in rows]}
     return {
         "total": len(rows),
         "items": [
-            {k: v for k, v in r.items() if k != "image"}
+            public_sample(r)
             for r in rows[offset : offset + limit]
         ],
     }
+
+
+@app.get("/api/datasets/{did}/samples/{sid}")
+def sample_detail(did: str, sid: str):
+    row = next((r for r in s.get("dataset", did)["rows"] if r["id"] == sid), None)
+    if row is None:
+        raise HTTPException(404, "이미지를 찾을 수 없습니다.")
+    return public_sample(row)
 
 
 @app.get("/api/datasets/{did}/images/{sid}")
@@ -243,12 +493,25 @@ def taxonomy_definition():
 def edit_labels(did: str, sid: str, body: LabelEdit):
     with s.db() as c:
         c.execute("BEGIN IMMEDIATE")
-        original = s.get("dataset", did, c)
+        opened = s.get("dataset", did, c)
+        original = wd.editable(opened, sid, c)
+        if body.split is not None and opened["id"] != original["id"]:
+            before = next(r for r in opened["rows"] if r["id"] == sid)
+            after = next(r for r in original["rows"] if r["id"] == sid)
+            if before["split"] != after["split"]:
+                raise HTTPException(409, "데이터 구분이 변경되었습니다. 다시 열어 확인하세요.")
+        did = original["id"]
         version = copy.deepcopy(original)
         row = next((r for r in version["rows"] if r["id"] == sid), None)
         if row is None:
             raise HTTPException(404, "Sample not found")
         schema_id = original.get("schema_id", taxonomy.LEGACY)
+        previous_category = row.get("category")
+        if schema_id == taxonomy.CURRENT:
+            if body.category is not None:
+                row["category"] = body.category
+            if taxonomy.category(row.get("category")) not in taxonomy.CATEGORIES:
+                raise ValueError("상품 카테고리를 선택하세요.")
         if not taxonomy.valid(body.target, schema_id, row.get("category")):
             raise ValueError("선택한 기준과 카테고리의 속성·허용값을 확인하세요.")
         if not set(body.unscored_fields) <= set(
@@ -256,6 +519,8 @@ def edit_labels(did: str, sid: str, body: LabelEdit):
         ):
             raise ValueError("평가 제외 속성이 올바르지 않습니다.")
         timestamp, vid = s.now(), s.uid()
+        if body.split is not None:
+            wd.set_split(row, body.split, timestamp)
         row.setdefault("original_label_source", row.get("label_source", "unknown"))
         row.setdefault("label_history", []).append(
             {
@@ -263,6 +528,7 @@ def edit_labels(did: str, sid: str, body: LabelEdit):
                 "parent_dataset_id": did,
                 "before": {
                     "target": copy.deepcopy(row["target"]),
+                    "category": previous_category,
                     "unscored_fields": row.get("unscored_fields", []),
                     "human_verified": row.get("human_verified", False),
                     "label_source": row.get("label_source", "unknown"),
@@ -280,6 +546,16 @@ def edit_labels(did: str, sid: str, body: LabelEdit):
             else "수동 레이블 · 검토 중",
             reviewed_at=timestamp if body.human_verified else None,
         )
+        if "label_state" in row:
+            row["label_state"] = (
+                "labeled"
+                if any(
+                    key not in row["unscored_fields"]
+                    and value not in ("unknown", "not_applicable")
+                    for key, value in row["target"].items()
+                )
+                else "unlabeled"
+            )
         base_name = original.get("annotation_base_name", original["name"])
         version.update(
             id=vid,
@@ -288,16 +564,72 @@ def edit_labels(did: str, sid: str, body: LabelEdit):
             created_at=timestamp,
             kind="annotation",
             parent_ids=[did],
-            provenance="수동 수정본 · 원본 레이블 및 분할 보존",
+            provenance="수동 수정본",
             fingerprint=hashlib.sha256(
                 json.dumps(version["rows"], sort_keys=True, ensure_ascii=False).encode()
             ).hexdigest(),
         )
-        s.save("dataset", version, c)
+        wd.publish(version, c)
     return {
         "dataset": s.public_dataset(version),
-        "sample": {k: v for k, v in row.items() if k != "image"},
+        "sample": public_sample(row),
     }
+
+
+@app.delete("/api/datasets/{did}/samples/{sid}/review")
+def cancel_review(did: str, sid: str):
+    with s.db() as c:
+        c.execute("BEGIN IMMEDIATE")
+        opened = s.get("dataset", did, c)
+        original = wd.editable(opened, sid, c)
+        rows = copy.deepcopy(original["rows"])
+        row = next((r for r in rows if r["id"] == sid), None)
+        if row is None:
+            raise HTTPException(404, "이미지를 찾을 수 없습니다.")
+        if not row.get("human_verified"):
+            return {"dataset": s.public_dataset(original), "sample": public_sample(row)}
+        timestamp = s.now()
+        row.setdefault("label_history", []).append({
+            "at": timestamp,
+            "parent_dataset_id": original["id"],
+            "channel": "review_cancelled",
+            "note": "검토 취소",
+            "before": {
+                "human_verified": row["human_verified"],
+                "reviewed_at": row.get("reviewed_at"),
+                "label_source": row.get("label_source"),
+            },
+        })
+        row.update(human_verified=False, reviewed_at=None)
+        if row.get("label_source") == "수동 레이블 · 사용자 검토 완료":
+            row["label_source"] = "수동 레이블 · 검토 대기"
+        version = wd.revision(original, rows, kind="annotation", provenance="검토 취소")
+        wd.publish(version, c)
+    return {"dataset": s.public_dataset(version), "sample": public_sample(row)}
+
+
+@app.post("/api/datasets/{did}/samples/split")
+def edit_splits(did: str, body: SplitEdit):
+    with s.db() as c:
+        c.execute("BEGIN IMMEDIATE")
+        original = s.get("dataset", did, c)
+        active = wd.current(original["workspace_id"], c)
+        if not active or active["id"] != did:
+            raise HTTPException(409, "데이터가 변경되었습니다. 목록을 새로고침하세요.")
+        selected = set(body.sample_ids)
+        if not selected <= {r["id"] for r in original["rows"]}:
+            raise HTTPException(404, "선택한 이미지를 찾을 수 없습니다.")
+        rows = copy.deepcopy(original["rows"])
+        timestamp = s.now()
+        changed = sum(
+            wd.set_split(row, body.split, timestamp)
+            for row in rows if row["id"] in selected
+        )
+        version = original
+        if changed:
+            version = wd.revision(original, rows, kind="split_edit")
+            wd.publish(version, c)
+    return {"dataset": s.public_dataset(version), "changed_count": changed}
 
 
 @app.get("/api/datasets/{did}/export")
@@ -318,9 +650,22 @@ def export(did: str):
     )
 
 
-def reconstruct(body: Reconstruction):
-    s.get("workspace", body.workspace_id)
-    parents = [s.get("dataset", did) for did in dict.fromkeys(body.dataset_ids)]
+def reconstruct(body: Reconstruction, con=None):
+    # Requests using only the old count field retain their original API default.
+    if body.train_budget is not None and body.data_count is None and "method" not in body.model_fields_set:
+        body = body.model_copy(update={"method": "source_balanced"})
+    if body.workspace_id is not None:
+        s.get("workspace", body.workspace_id, con)
+    parents = [s.get("dataset", did, con) for did in dict.fromkeys(body.dataset_ids)]
+    if body.data_count is not None and body.train_budget is not None:
+        raise ValueError("데이터 수는 하나의 기준으로 지정하세요.")
+    legacy = body.data_count is None and body.train_budget is not None and body.method in ("source_balanced", "random")
+    input_splits = ("train",) if legacy else reconstruction_sampling.CANDIDATE_SPLITS
+    if body.method != "merge":
+        for parent in parents:
+            if body.method == "balanced_mix" and body.dataset_weights.get(parent["id"]) == 0:
+                continue
+            require_labels(parent if legacy else {"rows": [r for r in parent["rows"] if r["split"] in input_splits]})
     schema_ids = {d.get("schema_id", taxonomy.LEGACY) for d in parents}
     if len(schema_ids) != 1:
         raise ValueError("서로 다른 레이블 기준은 함께 재구성할 수 없습니다.")
@@ -329,33 +674,50 @@ def reconstruct(body: Reconstruction):
         for row in d["rows"]:
             key = row["sha256"]
             if key in unique and (
-                unique[key]["split"] != row["split"]
+                (unique[key]["split"] != row["split"] and not {unique[key]["split"], row["split"]} <= set(input_splits))
                 or unique[key]["target"] != row["target"]
             ):
                 raise ValueError("Overlapping samples have conflicting split or labels")
             unique[key] = row
-    train = sorted(
-        [r for r in unique.values() if r["split"] == "train"], key=lambda r: r["id"]
+    candidates = sorted(
+        [r for r in unique.values() if r["split"] in input_splits], key=lambda r: r["id"]
     )
-    if body.train_budget > len(train):
-        raise ValueError(f"학습 데이터는 최대 {len(train)}개입니다.")
-    rng = random.Random(body.seed)
-    if body.method == "random":
-        selected = rng.sample(train, body.train_budget)
+    if body.method == "merge" and any(count is not None and count != len(candidates) for count in (body.data_count, body.train_budget)):
+        raise ValueError("전체 합치기는 데이터 수를 지정하지 않습니다.")
+    reference = None
+    if body.method == "distribution":
+        reference = next((d for d in parents if d["id"] == body.reference_id), None)
+        if reference is None:
+            raise ValueError("선택한 원본 중 기준 워크스페이스를 지정하세요.")
+    count = body.data_count if body.data_count is not None else body.train_budget
+    if body.method == "balanced_mix":
+        selected, distribution = reconstruction_sampling.balanced_mix(parents, count, body.seed, body.dataset_weights)
     else:
-        groups = {
-            source: [r for r in train if r["source"] == source]
-            for source in sorted({r["source"] for r in train})
-        }
-        for group in groups.values():
-            rng.shuffle(group)
-        selected = []
-        while len(selected) < body.train_budget:
-            for group in groups.values():
-                if group and len(selected) < body.train_budget:
-                    selected.append(group.pop())
-    heldout = [r for r in unique.values() if r["split"] != "train"]
-    selected = selected + heldout
+        if body.dataset_weights:
+            raise ValueError("혼합 비율은 균형 혼합에서만 지정할 수 있습니다.")
+        selected, distribution = reconstruction_sampling.select(
+            candidates, count, body.method, body.seed,
+            list({r["sha256"]: r for r in reference["rows"] if r["split"] in input_splits}.values()) if reference else None,
+        )
+    selected_count = len(selected)
+    promoted_count = sum(r["split"] == "unassigned" for r in selected)
+    selected = [r | {"split": "train", "source_split": "unassigned"} if r["split"] == "unassigned" else r for r in selected]
+    # Preserve the old train_budget contract for existing API clients only.
+    if legacy:
+        selected = selected + [r for r in unique.values() if r["split"] in ("validation", "test")]
+    selection = {
+        "scope": "with_holdout" if legacy else "train_only",
+        "input_splits": list(input_splits),
+        "promoted_count": promoted_count,
+        "available_count": len(candidates),
+        "selected_count": selected_count,
+        "duplicate_count": sum(r["split"] in input_splits for d in parents for r in d["rows"]) - len(candidates),
+        "by_source": dict(Counter(r["source"] for r in selected)),
+    }
+    if reference:
+        selection.update(reference_id=reference["id"], reference_name=reference["name"], **distribution)
+    elif body.method == "balanced_mix":
+        selection.update(distribution)
     fingerprint = hashlib.sha256(
         json.dumps(selected, sort_keys=True, ensure_ascii=False).encode()
     ).hexdigest()
@@ -370,7 +732,8 @@ def reconstruct(body: Reconstruction):
         "parent_ids": [d["id"] for d in parents],
         "fingerprint": fingerprint,
         "settings": body.model_dump(),
-        "provenance": "원본 레이블·분할 유지",
+        "selection": selection,
+        "provenance": "원본 레이블·분할 유지" if legacy else "학습 데이터 재구성",
     }
 
 
@@ -381,7 +744,17 @@ def preview(body: Reconstruction):
 
 @app.post("/api/reconstructions", status_code=201)
 def create_reconstruction(body: Reconstruction):
-    return s.public_dataset(s.save("dataset", reconstruct(body)))
+    with s.db() as con:
+        con.execute("BEGIN IMMEDIATE")
+        dataset = reconstruct(body, con)
+        if body.workspace_id is None:
+            # Validate reconstruction first, then publish both objects atomically.
+            workspace = Workspace(name=body.name).model_dump() | {
+                "id": s.uid(), "created_at": s.now()
+            }
+            s.save("workspace", workspace, con)
+            dataset["workspace_id"] = workspace["id"]
+        return s.public_dataset(wd.publish(dataset, con))
 
 
 @app.get("/api/models")
@@ -420,23 +793,27 @@ def model(mid: str):
 def create_job(body: Job):
     d = s.get("dataset", body.dataset_id)
     if body.kind == "labeling":
-        from .relabeling import TEACHER
-
-        if d.get("schema_id") != taxonomy.CURRENT or not d["rows"]:
-            raise ValueError("비케이브 기준의 데이터셋을 선택하세요.")
-        if body.model_id or body.reference_id:
-            raise ValueError("재레이블링은 고정 Gemma-4-12B 교사를 사용합니다.")
-        if not (TEACHER / "config.json").is_file():
-            raise ValueError("로컬 레이블링 모델이 없습니다.")
+        if body.model_id is None:
+            body = body.model_copy(update={"model_id": workspace_labeling_model(s.get("workspace", d["workspace_id"]), d)})
+        schema_id = d.get("schema_id", taxonomy.LEGACY)
+        taxonomy.schema(schema_id)
+        if not d["rows"]:
+            raise ValueError("이미지를 먼저 업로드하세요.")
+        if body.reference_id:
+            raise ValueError("자동 레이블링에는 비교 데이터셋이 필요하지 않습니다.")
+        selected_labeling_model(body.model_id, schema_id)
     elif body.kind == "drift":
         if not body.reference_id or body.reference_id == body.dataset_id:
             raise ValueError("서로 다른 비교 데이터셋을 선택하세요.")
         ref = s.get("dataset", body.reference_id)
+        require_labels(d)
+        require_labels(ref)
         if ref.get("schema_id", taxonomy.LEGACY) != d.get("schema_id", taxonomy.LEGACY):
             raise ValueError("같은 레이블 기준의 데이터셋끼리 비교하세요.")
         if not d["rows"] or not ref["rows"]:
             raise ValueError("Empty comparison dataset")
     else:
+        require_labels(d)
         if not body.model_id:
             raise ValueError("모델을 선택하세요.")
         m = s.get("model", body.model_id)
@@ -464,22 +841,53 @@ def create_job(body: Job):
         "result": None,
         "error": None,
     }
-    return s.save("job", job)
+    with s.db() as con:
+        con.execute("BEGIN IMMEDIATE")
+        # Recheck under the deletion/queue lock so deleted inputs cannot be queued.
+        s.get("dataset", body.dataset_id, con)
+        if body.reference_id:
+            s.get("dataset", body.reference_id, con)
+        if body.kind == "labeling" and any(
+            j["request"]["kind"] == "labeling"
+            and j["request"]["dataset_id"] == body.dataset_id
+            and j["status"] in ("queued", "running")
+            for j in s.all_of("job", con)
+        ):
+            raise HTTPException(
+                409, "이 데이터셋의 자동 레이블링이 이미 진행 중입니다."
+            )
+        return s.save("job", job, con)
+
+
+def named_jobs(values):
+    datasets = {d["id"]: d for d in s.dataset_summaries()}
+    workspaces = {w["id"]: w["name"] for w in s.all_of("workspace")}
+    for j in values:
+        for prefix, key in (("dataset", "dataset_id"), ("reference", "reference_id")):
+            d = datasets.get(j["request"].get(key))
+            if d:
+                j[prefix + "_name"] = workspaces.get(d["workspace_id"], d["name"])
+                j[prefix + "_workspace_id"] = d["workspace_id"]
+        j.pop("input_row", None)
+    return values
 
 
 @app.get("/api/jobs")
 def jobs(
-    kind: Literal["training", "evaluation", "drift", "labeling"] | None = None,
+    kind: Literal["training", "evaluation", "drift", "labeling", "inference"]
+    | None = None,
     summary: bool = False,
 ):
     if summary:
-        return s.job_summaries(kind)
-    return [j for j in s.all_of("job") if kind is None or j["request"]["kind"] == kind]
+        return named_jobs(s.job_summaries(kind))
+    return named_jobs(
+        [j for j in s.all_of("job") if kind is None or j["request"]["kind"] == kind]
+    )
 
 
 @app.get("/api/jobs/{jid}")
 def job(jid: str):
-    return s.get("job", jid)
+    return named_jobs([s.get("job", jid)])[0]
 
 
 @app.post("/api/jobs/{jid}/cancel")

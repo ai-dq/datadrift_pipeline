@@ -132,9 +132,7 @@ export function RelabelReport() {
             </table>
           </div>
         )}
-        <p className="result-note">
-          AI 레이블 기준의 일치도입니다. 사람 검증 정확도와는 다릅니다.
-        </p>
+
         <details className="help-details">
           <summary>실험 조건과 보정 결과</summary>
           <p>

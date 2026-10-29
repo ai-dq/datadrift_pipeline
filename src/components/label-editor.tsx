@@ -1,12 +1,12 @@
 "use client";
 
 import { displayName } from "@/lib/utils";
+import { LabelStatus } from "@/components/label-status";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
-  CheckCheck,
   ImageIcon,
   RotateCcw,
   Save,
@@ -15,10 +15,21 @@ import {
   ZoomOut,
 } from "lucide-react";
 
+type LabelHistory = {
+  at?: string | null;
+  note?: string;
+  channel?: string;
+  teacher?: { model_name?: string; model?: string; model_id?: string };
+};
 export type LabelSample = {
+  label_state?: "unlabeled" | "labeled";
   id: string;
   product_id: string;
   source: string;
+  filename?: string;
+  upload_filename?: string;
+  ai_labeled?: boolean;
+  initial_label?: { model_name: string; at?: string | null };
   category?: string;
   schema_id?: string;
   split: string;
@@ -27,7 +38,7 @@ export type LabelSample = {
   original_label_source?: string;
   human_verified: boolean;
   unscored_fields: string[];
-  label_history?: { at: string; note: string; channel?: string }[];
+  label_history?: LabelHistory[];
   ai_label?: {
     raw: string;
     schema_valid: boolean;
@@ -83,6 +94,7 @@ const display = (value: string) =>
       ? "해당 없음"
       : value;
 const splitName: Record<string, string> = {
+  unassigned: "미지정",
   train: "학습",
   validation: "검증",
   test: "테스트",
@@ -96,41 +108,63 @@ export function LabelEditor({
   onClose,
   onMove,
   onSaved,
+  navigationBusy = false,
+  navigationError = "",
 }: {
+  navigationBusy?: boolean;
+  navigationError?: string;
   sample: LabelSample;
   dataset: Version;
   position: number;
   total: number;
   onClose: () => void;
   onMove: (direction: number) => void;
-  onSaved: (dataset: Version, sample: LabelSample) => void;
+  onSaved: (dataset: Version, sample: LabelSample, message?: string) => void;
 }) {
   const isBkave = !!dataset.schema_id && dataset.schema_id !== "visual-v1";
+  const filename =
+    sample.filename || sample.upload_filename || sample.product_id;
+  const history: LabelHistory[] = [
+    ...(sample.initial_label
+      ? [
+          {
+            at: sample.initial_label.at,
+            channel: "initial_label",
+            teacher: { model_name: sample.initial_label.model_name },
+          },
+        ]
+      : []),
+    ...(sample.label_history || []),
+  ];
   const [taxonomy, setTaxonomy] = useState<{
     name: string;
     colors: { code: string; name: string; group: string }[];
   } | null>(null);
   const [schema, setSchema] = useState<Record<string, string[]> | null>(null);
   const [target, setTarget] = useState(sample.target);
+  const [split, setSplit] = useState(sample.split);
+  const [category, setCategory] = useState(sample.category || "");
   const [excluded, setExcluded] = useState(sample.unscored_fields || []);
-  const [verified, setVerified] = useState(sample.human_verified);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [action, setAction] = useState<"save" | "cancel-review" | null>(null);
+  const saving = action !== null;
+  const busy = saving || navigationBusy;
   const [zoom, setZoom] = useState(1);
   const [discard, setDiscard] = useState<null | (() => void)>(null);
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const dirty =
+    category !== (sample.category || "") ||
+    split !== sample.split ||
     JSON.stringify(target) !== JSON.stringify(sample.target) ||
     JSON.stringify([...excluded].sort()) !==
       JSON.stringify([...(sample.unscored_fields || [])].sort()) ||
-    verified !== sample.human_verified ||
     !!note.trim();
-  const leaveRef = useRef({ dirty, busy, onClose });
-  leaveRef.current = { dirty, busy, onClose };
+  const leaveRef = useRef({ dirty, busy: saving, onClose });
+  leaveRef.current = { dirty, busy: saving, onClose };
   function leave(action: () => void) {
-    if (busy) return;
+    if (saving) return;
     if (dirty) setDiscard(() => action);
     else action();
   }
@@ -165,18 +199,6 @@ export function LabelEditor({
     };
     document.addEventListener("keydown", keydown);
     const controller = new AbortController();
-    fetch(
-      `/api/label-schema?schema_id=${encodeURIComponent(dataset.schema_id || "visual-v1")}${isBkave ? "&category=" + encodeURIComponent(sample.category || "") : ""}`,
-      { signal: controller.signal },
-    )
-      .then(async (r) => {
-        if (!r.ok)
-          throw new Error("속성 목록을 불러오지 못했습니다. 다시 열어주세요.");
-        setSchema(await r.json());
-      })
-      .catch((e) => {
-        if (e.name !== "AbortError") setError(e.message);
-      });
     if (isBkave)
       fetch("/api/taxonomy", { signal: controller.signal })
         .then((r) => {
@@ -194,19 +216,54 @@ export function LabelEditor({
       previous?.focus();
     };
   }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    setSchema(null);
+    setError("");
+    fetch(
+      `/api/label-schema?schema_id=${encodeURIComponent(dataset.schema_id || "visual-v1")}${isBkave && category ? "&category=" + encodeURIComponent(category) : ""}`,
+      { signal: controller.signal },
+    )
+      .then(async (response) => {
+        if (!response.ok) throw new Error("속성 목록을 불러오지 못했습니다.");
+        return response.json() as Promise<Record<string, string[]>>;
+      })
+      .then((values) => {
+        setSchema(values);
+        if (category !== (sample.category || "")) {
+          setTarget(
+            Object.fromEntries(
+              Object.entries(values).map(([key, allowed]) => [
+                key,
+                key === "details"
+                  ? []
+                  : allowed.length === 1 && allowed[0] === "not_applicable"
+                    ? "not_applicable"
+                    : "unknown",
+              ]),
+            ),
+          );
+          setExcluded(Object.keys(values));
+        }
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setError(error.message);
+      });
+    return () => controller.abort();
+  }, [category, dataset.schema_id]);
   function update(field: string, value: unknown) {
     setTarget((v) => ({ ...v, [field]: value }));
-    setVerified(false);
   }
   function reset() {
     setTarget(sample.target);
+    setSplit(sample.split);
+    setCategory(sample.category || "");
     setExcluded(sample.unscored_fields || []);
-    setVerified(sample.human_verified);
     setNote("");
     setError("");
   }
   async function save() {
-    setBusy(true);
+    setAction("save");
     setError("");
     try {
       const r = await fetch(
@@ -217,7 +274,9 @@ export function LabelEditor({
           body: JSON.stringify({
             target,
             unscored_fields: excluded,
-            human_verified: verified,
+            human_verified: true,
+            category: isBkave && category ? category : undefined,
+            split,
             note,
           }),
         },
@@ -233,7 +292,29 @@ export function LabelEditor({
     } catch (e) {
       setError(e instanceof Error ? e.message : "저장하지 못했습니다.");
     } finally {
-      setBusy(false);
+      setAction(null);
+    }
+  }
+  async function cancelReview() {
+    setAction("cancel-review");
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/datasets/${dataset.id}/samples/${sample.id}/review`,
+        { method: "DELETE" },
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(
+          typeof data.detail === "string"
+            ? data.detail
+            : "검토를 취소하지 못했습니다.",
+        );
+      onSaved(data.dataset, data.sample, "검토를 취소했습니다.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "검토를 취소하지 못했습니다.");
+    } finally {
+      setAction(null);
     }
   }
   const groups = isBkave
@@ -295,16 +376,12 @@ export function LabelEditor({
               <ImageIcon size={21} />
             </span>
             <div>
-              <h2>
-                레이블 상세{" "}
-                <span>{isBkave ? "비케이브 기준" : "기존 기준"}</span>
-              </h2>
-              <p>{sample.product_id}</p>
+              <h2>레이블 상세</h2>
             </div>
           </div>
           <div className="label-navigation">
             <span>
-              {position + 1} / {total} <small>현재 페이지</small>
+              {position + 1} / {total}
             </span>
             <button
               disabled={busy || position <= 0}
@@ -322,7 +399,7 @@ export function LabelEditor({
             </button>
             <button
               ref={closeButton}
-              disabled={busy}
+              disabled={saving}
               aria-label="상세 닫기"
               onClick={() => leave(onClose)}
             >
@@ -333,16 +410,21 @@ export function LabelEditor({
         <div className="label-body">
           <div className="label-preview">
             <div className="label-image-toolbar">
-              <span>
-                {sample.source === "gsshop"
-                  ? "GS SHOP"
-                  : sample.source === "musinsa"
-                    ? "무신사 (BKAVE)"
-                    : sample.source}
+              <span className="label-filename" title={filename}>
+                {filename}
               </span>
-              <span className="label-pill">
-                {splitName[sample.split] || sample.split} 데이터
-              </span>
+              <select
+                aria-label="데이터 구분"
+                value={split}
+                disabled={busy}
+                onChange={(e) => setSplit(e.target.value)}
+              >
+                {Object.entries(splitName).map(([value, name]) => (
+                  <option key={value} value={value}>
+                    {name} 데이터
+                  </option>
+                ))}
+              </select>
             </div>
             <div
               className="label-image-stage"
@@ -352,7 +434,7 @@ export function LabelEditor({
               <img
                 style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}
                 src={`/api/datasets/${dataset.id}/images/${sample.id}`}
-                alt={sample.product_id}
+                alt={filename}
               />
             </div>
             <div className="label-zoom">
@@ -374,96 +456,62 @@ export function LabelEditor({
               <button onClick={() => setZoom(1)}>맞춤</button>
             </div>
             <div className="label-provenance">
-              <div>
-                <span
-                  className={`label-pill ${sample.human_verified ? "verified" : ""}`}
-                >
-                  {sample.human_verified ? <CheckCheck size={14} /> : null}
-                  {sample.human_verified ? "사람 검토 완료" : "사람 검토 전"}
-                </span>
-                <span className="label-pill">
-                  {sample.label_history?.some(
-                    (h) => h.channel === "manual_web_or_api",
-                  )
-                    ? "수동 수정본"
-                    : sample.label_history?.some(
-                          (h) => h.channel === "ai_relabel",
-                        )
-                      ? "AI 재레이블"
-                      : isBkave
-                        ? "기준 변환본"
-                        : "AI 레이블"}
-                </span>
-              </div>
-              <p>
-                이미지에서 확인되는 속성만 선택하세요. 판단하기 어려우면 ‘판단
-                어려움’을 사용하세요.
-              </p>
+              <LabelStatus sample={sample} />
               <details>
-                <summary>레이블 출처와 수정 이력</summary>
-                <p>현재: {displayName(sample.label_source)}</p>
-                {sample.original_label_source && (
-                  <p>원본: {displayName(sample.original_label_source)}</p>
-                )}
-                <p className="label-version">{displayName(dataset.name)}</p>
-                {sample.label_history?.map((h, i) => (
+                <summary>수정 이력</summary>
+                {!history.length && <p>수정 이력이 없습니다.</p>}
+                {history.map((h, i) => (
                   <p key={i}>
-                    {new Date(h.at).toLocaleString("ko-KR", {
-                      timeZone: "Asia/Seoul",
-                    })}{" "}
-                    / {displayName(h.note) || "속성 수정"}
+                    {h.at && (
+                      <>
+                        {new Date(h.at).toLocaleString("ko-KR", {
+                          timeZone: "Asia/Seoul",
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        })}
+                        {" / "}
+                      </>
+                    )}
+                    {h.channel === "manual_web_or_api"
+                      ? "직접 수정"
+                      : h.channel === "review_cancelled"
+                        ? "검토 취소"
+                        : h.channel === "taxonomy_mapping"
+                          ? "기준 변환"
+                          : displayName(
+                              h.teacher?.model_name ||
+                                h.teacher?.model
+                                  ?.split("/")
+                                  .filter(Boolean)
+                                  .pop() ||
+                                h.teacher?.model_id ||
+                                "모델 미기록",
+                            )}
+                    {(h.channel === "initial_label" ||
+                      h.channel === "ai_relabel") &&
+                      "로 레이블링 완료"}
                   </p>
                 ))}
               </details>
-              {sample.ai_label && (
-                <details>
-                  <summary>
-                    AI 판독 원문:{" "}
-                    {sample.ai_label.schema_valid
-                      ? "허용값 검사 통과"
-                      : "부적합 필드 제외"}
-                  </summary>
-                  <pre className="logs">{sample.ai_label.raw}</pre>
-                  {!!Object.keys(sample.ai_label.rejected_fields).length && (
-                    <p>
-                      제외된 필드:{" "}
-                      {Object.keys(sample.ai_label.rejected_fields)
-                        .map(
-                          (k) =>
-                            Object.fromEntries(groups.flatMap((g) => g.fields))[
-                              k
-                            ] || k,
-                        )
-                        .join(", ")}
-                    </p>
-                  )}
-                </details>
-              )}
             </div>
           </div>
           <div className="label-fields">
             <div className="label-fields-heading">
               <div>
                 <h3>속성 레이블</h3>
-                <p>
-                  {isBkave
-                    ? `${sample.category} / ${taxonomy?.name || "비케이브"} 기준`
-                    : "이미지와 비교하며 값을 수정하세요."}
-                </p>
               </div>
               <span>
                 {completed} / {applicableCount} 입력됨
               </span>
             </div>
-            {isBkave && (
-              <details className="help-details">
-                <summary>입력 기준</summary>
-                <p>
-                  비케이브의 카테고리별 허용값을 사용합니다. 제외된 속성은 검토
-                  후 제외 설정을 해제하세요. 생산처와 색상 코드는 근거가 있을 때
-                  입력하세요.
-                </p>
-              </details>
+            {navigationError && (
+              <div role="alert" className="alert error">
+                {navigationError}
+              </div>
             )}
             {error && (
               <div className="alert error" role="alert">
@@ -473,7 +521,25 @@ export function LabelEditor({
             {!schema && !error && (
               <div className="empty">속성 목록을 불러오는 중입니다…</div>
             )}
-            <fieldset disabled={busy || !schema} className="label-form-fields">
+            {isBkave && !sample.category && (
+              <label className="field">
+                상품 카테고리
+                <select
+                  value={category}
+                  disabled={busy}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option value="">카테고리 선택</option>
+                  {["아우터", "상의", "하의", "ACC"].map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <fieldset
+              disabled={busy || !schema || (isBkave && !category)}
+              className="label-form-fields"
+            >
               {groups.map((group) => (
                 <section className="label-section" key={group.title}>
                   <h4>{group.title}</h4>
@@ -514,7 +580,6 @@ export function LabelEditor({
                                   ? [...v, field]
                                   : v.filter((k) => k !== field),
                               );
-                              setVerified(false);
                             }}
                           />
                           학습 및 평가 제외{" "}
@@ -569,7 +634,6 @@ export function LabelEditor({
                           ? [...v, "details"]
                           : v.filter((k) => k !== "details"),
                       );
-                      setVerified(false);
                     }}
                   />
                   학습 및 평가 제외 <span className="sr-only">디테일</span>
@@ -584,20 +648,6 @@ export function LabelEditor({
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
-                </label>
-                <label className="label-verify">
-                  <input
-                    type="checkbox"
-                    checked={verified}
-                    onChange={(e) => setVerified(e.target.checked)}
-                  />
-                  <span>
-                    <strong>전체 속성을 직접 검토했습니다</strong>
-                    <small>
-                      선택한 경우에만 사람 검토 완료로 기록됩니다. 제외한 속성은
-                      그대로 제외됩니다.
-                    </small>
-                  </span>
                 </label>
               </section>
             </fieldset>
@@ -626,14 +676,18 @@ export function LabelEditor({
         )}
         <footer className="label-footer">
           <div>
-            <strong>
-              {dirty
-                ? "저장하지 않은 변경사항"
-                : "원본과 실행 이력을 보존합니다"}
-            </strong>
-            <p>저장하면 수정본이 새 데이터셋 버전으로 생성됩니다.</p>
+            <strong>{dirty ? "저장하지 않은 변경사항" : ""}</strong>
           </div>
           <div className="actions">
+            {sample.human_verified && (
+              <button
+                className="button secondary"
+                disabled={busy}
+                onClick={() => leave(() => void cancelReview())}
+              >
+                {action === "cancel-review" ? "취소 중…" : "검토 취소"}
+              </button>
+            )}
             <button
               className="button secondary"
               disabled={busy || !dirty}
@@ -644,11 +698,16 @@ export function LabelEditor({
             </button>
             <button
               className="button"
-              disabled={busy || !schema || !dirty}
+              disabled={
+                busy ||
+                !schema ||
+                (isBkave && !category) ||
+                (!dirty && sample.human_verified)
+              }
               onClick={save}
             >
               <Save size={16} />
-              {busy ? "저장 중…" : "수정본 저장"}
+              {action === "save" ? "저장 중…" : "저장"}
             </button>
           </div>
         </footer>

@@ -18,6 +18,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
         "workspaces/gsshop",
         "reconstruction",
         "models",
+        "model-api",
         "models/qwen35_2b",
         "training",
         "evaluation",
@@ -47,7 +48,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
             panel
               .locator(".panel-heading")
               .getByRole("link", { name: "데이터 재구성", exact: true }),
-          ).toHaveAttribute("href", "/ko/reconstruction");
+          ).toHaveAttribute("href", /^\/ko\/reconstruction\?sources=/);
           const jobs = await (
             await page.request.get(base + "/api/jobs?kind=drift")
           ).json();
@@ -132,14 +133,23 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
           ).toBeVisible();
           const menu = page.locator(".action-menu");
           await menu.locator("summary").click();
-          await expect(
-            menu.getByRole("button", { name: "AI 재레이블링", exact: true }),
-          ).toBeEnabled();
+          const currentDatasets = await (
+            await page.request.get(base + "/api/datasets?current=true")
+          ).json();
+          const supportsLabeling =
+            currentDatasets.find((d) => d.workspace_id === "gsshop")?.count > 0;
+          const labelingButton = page.getByRole("button", {
+            name: "자동 레이블링",
+            exact: true,
+          });
+          if (supportsLabeling) await expect(labelingButton).toBeEnabled();
+          else await expect(labelingButton).toBeDisabled();
           await expect(
             menu.getByRole("link", { name: "레이블 내보내기" }),
           ).toHaveAttribute("href", /\/export$/);
           await menu.locator("summary").press("Escape");
           await expect(menu).not.toHaveAttribute("open");
+          await menu.locator("summary").click();
           await page
             .getByRole("button", { name: "레이블 검토", exact: true })
             .click();
@@ -172,7 +182,7 @@ const base = process.env.TEST_BASE_URL || "http://121.126.210.3:18091";
     }
     assert.deepEqual(errors, []);
     console.log(
-      "18 page visits passed: desktop/mobile layout, no visible middle dots, menus/Escape, label editor, drift counts, collapsed comparison report, no JS errors",
+      "20 page visits passed: desktop/mobile layout, no visible middle dots, menus/Escape, label editor, drift counts, collapsed comparison report, no JS errors",
     );
   } finally {
     await browser.close();
